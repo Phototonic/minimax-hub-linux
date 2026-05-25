@@ -5,6 +5,7 @@ source "$(dirname "${BASH_SOURCE[0]}")/common.sh"
 
 source_payload="${WINDOWS_PAYLOAD_CACHE}/payload"
 payload_dir="${DEFAULT_PAYLOAD_DIR}"
+installed_icon="${PROJECT_ROOT}/linux-build/usr/share/icons/hicolor/256x256/apps/minimax-hub.png"
 runtime_dir=""
 assembly_dir="${PROJECT_ROOT}/.cache/assembly"
 electron_bin=""
@@ -137,12 +138,73 @@ copy_top_level_resource_files() {
   while IFS= read -r -d '' file_name; do
     lower_name="$(basename "${file_name}" | tr '[:upper:]' '[:lower:]')"
     case "${lower_name}" in
+      app-update.yml)
+        log_action "Skip Linux-disabled updater metadata: $(relative_path "${PROJECT_ROOT}" "${file_name}")"
+        ;;
       *.json|*.pak|*.dat|*.bin|*.ico|*.png|*.icns|*.desktop|*.yml|*.yaml|license*|credits*)
         target_file="${payload_dir}/$(basename "${file_name}")"
         copy_file_to "${file_name}" "${target_file}"
         ;;
     esac
   done < <(find "${source_payload}" -maxdepth 1 -type f -print0)
+}
+
+find_icon_candidate_in_dir() {
+  local search_dir="$1"
+  local maxdepth="${2:-}"
+  local find_args=("${search_dir}")
+  [[ -d "${search_dir}" ]] || return 0
+  [[ -z "${maxdepth}" ]] || find_args+=(-maxdepth "${maxdepth}")
+  find "${find_args[@]}" -type f -iname '*.png' | LC_ALL=C sort | awk '
+    { lower = tolower($0) }
+    lower ~ /minimax.*hub.*256|256.*minimax.*hub|minimax.*hub|hub|icon.*256|256.*icon|logo.*256|256.*logo|icon|logo/ { print; exit }
+  '
+}
+
+find_desktop_icon_candidate() {
+  local candidate search_dir
+  for candidate in \
+    "${source_payload}/resources/icons/minimax-hub.png" \
+    "${source_payload}/resources/icons/icon.png" \
+    "${source_payload}/resources/icons/256x256.png" \
+    "${source_payload}/resources/assets/minimax-hub.png" \
+    "${source_payload}/resources/assets/icon.png" \
+    "${source_payload}/resources/minimax-hub.png" \
+    "${source_payload}/resources/icon.png" \
+    "${source_payload}/minimax-hub.png" \
+    "${source_payload}/icon.png"; do
+    [[ -s "${candidate}" ]] && printf '%s\n' "${candidate}" && return 0
+  done
+
+  for search_dir in \
+    "${source_payload}/resources/icons" \
+    "${source_payload}/resources/assets" \
+    "${source_payload}/resources"; do
+    candidate="$(find_icon_candidate_in_dir "${search_dir}")"
+    [[ -n "${candidate}" && -s "${candidate}" ]] && printf '%s\n' "${candidate}" && return 0
+  done
+
+  candidate="$(find_icon_candidate_in_dir "${source_payload}" 1)"
+  [[ -n "${candidate}" && -s "${candidate}" ]] && printf '%s\n' "${candidate}" && return 0
+}
+
+stage_desktop_icon() {
+  local icon_candidate
+  icon_candidate="$(find_desktop_icon_candidate)"
+  if [[ -n "${icon_candidate}" ]]; then
+    copy_file_to "${icon_candidate}" "${installed_icon}"
+  else
+    log_action "MISSING: desktop icon candidate for ${installed_icon} (expected a PNG from source payload resources/icons, resources/assets, resources, or top level)"
+  fi
+}
+
+remove_linux_updater_metadata() {
+  local updater_file
+  for updater_file in "${payload_dir}/resources/app-update.yml" "${payload_dir}/app-update.yml"; do
+    [[ -e "${updater_file}" ]] || continue
+    log_action "Remove Linux-disabled updater metadata: $(relative_path "${PROJECT_ROOT}" "${updater_file}")"
+    run_or_print rm -f "${updater_file}"
+  done
 }
 
 record_missing() {
@@ -200,9 +262,10 @@ copy_app_resources() {
   copy_optional_dir "resources/plugins"
   copy_optional_dir "resources/icons"
   copy_optional_dir "resources/assets"
-  copy_optional_file "resources/app-update.yml"
   copy_optional_file "resources/electron.asar"
   copy_top_level_resource_files
+  stage_desktop_icon
+  remove_linux_updater_metadata
 }
 
 copy_linux_replacements() {
@@ -235,6 +298,9 @@ verify_final_prerequisites() {
   [[ -x "${payload_dir}/resources/ffmpeg/ffmpeg" ]] || required+=("resources/ffmpeg/ffmpeg executable")
   [[ -x "${payload_dir}/resources/ffmpeg/ffprobe" ]] || required+=("resources/ffmpeg/ffprobe executable")
   [[ -d "${payload_dir}/resources/gateway/node_modules" ]] || required+=("resources/gateway/node_modules Linux-native modules from Task 5")
+  [[ -s "${installed_icon}" ]] || required+=("installed desktop icon: ${installed_icon}")
+  [[ ! -e "${payload_dir}/resources/app-update.yml" ]] || required+=("remove Linux-disabled updater metadata: resources/app-update.yml")
+  [[ ! -e "${payload_dir}/app-update.yml" ]] || required+=("remove Linux-disabled updater metadata: app-update.yml")
 
   if [[ ${#required[@]} -gt 0 ]]; then
     printf 'Error: Assembled payload is missing required Linux prerequisites:\n' >&2

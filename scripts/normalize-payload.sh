@@ -68,6 +68,15 @@ set_executable() {
   run_or_print chmod 0755 "${file_path}"
 }
 
+remove_linux_updater_metadata() {
+  local updater_file
+  for updater_file in "${payload_dir}/resources/app-update.yml" "${payload_dir}/app-update.yml"; do
+    [[ -e "${updater_file}" ]] || continue
+    log_action "Remove Linux-disabled updater metadata: $(relative_path "${PROJECT_ROOT}" "${updater_file}")"
+    run_or_print rm -f "${updater_file}"
+  done
+}
+
 normalize_payload_text_files() {
   [[ -d "${payload_dir}" ]] || return 0
   local file_path
@@ -154,6 +163,11 @@ verify_no_forbidden_windows_artifacts() {
   fi
 }
 
+verify_no_linux_updater_metadata() {
+  [[ ! -e "${payload_dir}/resources/app-update.yml" ]] || die "Linux payload must not include upstream updater metadata: ${payload_dir}/resources/app-update.yml"
+  [[ ! -e "${payload_dir}/app-update.yml" ]] || die "Linux payload must not include upstream updater metadata: ${payload_dir}/app-update.yml"
+}
+
 write_normalization_report() {
   local report_file="${assembly_dir}/normalization-report.txt"
   ensure_dir "${assembly_dir}"
@@ -238,6 +252,7 @@ if [[ ! -d "${payload_dir}" ]]; then
 fi
 
 fix_executable_bits
+remove_linux_updater_metadata
 normalize_packaging_text_files
 normalize_payload_text_files
 
@@ -249,6 +264,7 @@ fi
 
 verify_crlf_free
 verify_no_forbidden_windows_artifacts
+verify_no_linux_updater_metadata
 write_sorted_inventory "${payload_dir}" "${assembly_dir}/inventory.txt"
 write_sha256_report "${payload_dir}" "${assembly_dir}/sha256.txt"
 write_normalization_report
