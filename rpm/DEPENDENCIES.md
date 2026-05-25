@@ -116,7 +116,7 @@ rpm -qp --requires output/minimax-hub-0.1.44-1.x86_64.rpm
 bash tests/verify-rpm.sh output/minimax-hub-0.1.44-1.x86_64.rpm
 ```
 
-`tests/verify-rpm.sh` checks for `gtk3`, `nss`, and `desktop-file-utils` in RPM requirements, confirms desktop cache scriptlets, validates `chrome-sandbox`, and inspects the extracted payload when `rpm2cpio` plus `cpio` or `bsdtar` is available.
+`tests/verify-rpm.sh` checks for `gtk3`, `nss`, and `desktop-file-utils` in RPM requirements, confirms desktop and icon cache scriptlets, validates `chrome-sandbox`, requires `/usr/share/icons/hicolor/256x256/apps/minimax-hub.png`, rejects packaged `resources/app-update.yml`, and inspects the extracted payload when `rpm2cpio` plus `cpio` or `bsdtar` is available.
 
 ## Dependency Risks
 
