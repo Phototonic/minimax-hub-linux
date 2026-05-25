@@ -1,2 +1,76 @@
-# Scaffold workflow placeholder
-# Implementation will be added in a later task.
+name: Release
+
+on:
+  workflow_run:
+    workflows:
+      - Build
+    types:
+      - completed
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: 'Release tag to publish, for example v0.1.44.'
+        required: true
+        type: string
+      artifact_run_id:
+        description: 'Optional Build workflow run id containing minimax-hub-deb and minimax-hub-rpm artifacts.'
+        required: false
+        type: string
+      artifact_path:
+        description: 'Optional runner-local directory containing existing .deb and .rpm files to publish.'
+        required: false
+        type: string
+
+permissions:
+  actions: read
+  contents: write
+
+jobs:
+  publish-packages:
+    name: Publish package artifacts
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && startsWith(github.event.workflow_run.head_branch, 'v')) }}
+    env:
+      TAG_NAME: ${{ github.event_name == 'workflow_dispatch' && inputs.tag_name || github.event.workflow_run.head_branch }}
+      ARTIFACT_RUN_ID: ${{ github.event_name == 'workflow_dispatch' && inputs.artifact_run_id || github.event.workflow_run.id }}
+      ARTIFACT_PATH: ${{ github.event_name == 'workflow_dispatch' && inputs.artifact_path || '' }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Download package artifacts from Build workflow
+        if: ${{ env.ARTIFACT_RUN_ID != '' }}
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          run-id: ${{ env.ARTIFACT_RUN_ID }}
+          pattern: minimax-hub-*
+          merge-multiple: true
+          path: release-artifacts
+
+      - name: Add runner-local package artifacts
+        if: ${{ env.ARTIFACT_PATH != '' }}
+        run: |
+          test -d "${ARTIFACT_PATH}"
+          mkdir -p release-artifacts
+          find "${ARTIFACT_PATH}" -maxdepth 1 -type f \( -name 'minimax-hub_*_amd64.deb' -o -name 'minimax-hub-*-1*.x86_64.rpm' \) -exec cp {} release-artifacts/ \;
+
+      - name: Validate package artifacts
+        run: |
+          test -n "${TAG_NAME}"
+          mkdir -p release-artifacts
+          find release-artifacts -maxdepth 1 -type f \( -name 'minimax-hub_*_amd64.deb' -o -name 'minimax-hub-*-1*.x86_64.rpm' \) -size +0 | sort > release-artifacts/files.txt
+          test -s release-artifacts/files.txt
+          grep -E '\.deb$' release-artifacts/files.txt
+          grep -E '\.rpm$' release-artifacts/files.txt
+          cat release-artifacts/files.txt
+
+      - name: Publish GitHub release assets
+        run: |
+          if ! gh release view "${TAG_NAME}" >/dev/null 2>&1; then
+            gh release create "${TAG_NAME}" --title "${TAG_NAME}" --notes "MiniMax Hub Linux packaging artifacts for ${TAG_NAME}."
+          fi
+          while IFS= read -r artifact; do
+            gh release upload "${TAG_NAME}" "${artifact}" --clobber
+          done < release-artifacts/files.txt
