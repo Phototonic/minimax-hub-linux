@@ -37,6 +37,26 @@ require_executable_present() {
   fi
 }
 
+require_regular_executable_present() {
+  local path="$1"
+  local label="$2"
+  if [[ -L "${path}" ]]; then
+    record_missing "${label} must be a regular non-symlink executable: ${path}"
+  elif [[ ! -f "${path}" || ! -s "${path}" ]]; then
+    record_missing "${label}: ${path}"
+  elif [[ ! -x "${path}" ]]; then
+    record_missing "${label} is not executable: ${path}"
+  fi
+}
+
+require_chrome_sandbox_if_present() {
+  local path="$1"
+  [[ -e "${path}" || -L "${path}" ]] || return 0
+  [[ ! -L "${path}" ]] || die "Electron chrome-sandbox must be a regular non-symlink file before setting setuid mode: ${path}"
+  [[ -f "${path}" ]] || die "Electron chrome-sandbox must be a regular file before setting setuid mode: ${path}"
+  [[ -x "${path}" ]] || die "Electron chrome-sandbox must be executable before setting setuid mode: ${path}"
+}
+
 
 normalize_text_file() {
   local file_path="$1"
@@ -90,6 +110,7 @@ normalize_debian_package() {
   set_executable_if_present "${PAYLOAD_DIR}/electron"
   set_executable_if_present "${PAYLOAD_DIR}/node/bin/node"
   set_executable_if_present "${PAYLOAD_DIR}/resources/opencode/opencode"
+  require_chrome_sandbox_if_present "${PAYLOAD_DIR}/chrome-sandbox"
   set_executable_if_present "${PAYLOAD_DIR}/chrome-sandbox" 4755
 }
 
@@ -115,10 +136,16 @@ validate_package_payload() {
   require_dir_present "${DEBIAN_ROOT}" "Debian package root"
   require_dir_present "${PAYLOAD_DIR}" "MiniMax Hub payload directory"
   require_file_present "${PAYLOAD_DIR}/resources/app.asar" "Application archive"
+  require_file_present "${PAYLOAD_DIR}/resources/gateway/dist/main.js" "Gateway entrypoint"
+  require_file_present "${PAYLOAD_DIR}/resources/mcp-tools/dist/main.js" "MCP tools entrypoint"
+  require_dir_present "${PAYLOAD_DIR}/resources/opencode/config" "OpenCode config directory"
   require_executable_present "${PAYLOAD_DIR}/electron" "Electron Linux runtime"
   require_executable_present "${PAYLOAD_DIR}/node/bin/node" "Node Linux runtime"
   require_executable_present "${PAYLOAD_DIR}/resources/opencode/opencode" "OpenCode Linux binary"
-  require_executable_present "${PAYLOAD_DIR}/chrome-sandbox" "Electron chrome-sandbox"
+  require_regular_executable_present "${PAYLOAD_DIR}/chrome-sandbox" "Electron chrome-sandbox"
+  require_executable_present "${PAYLOAD_DIR}/resources/ffmpeg/ffmpeg" "FFmpeg Linux binary"
+  require_executable_present "${PAYLOAD_DIR}/resources/ffmpeg/ffprobe" "FFprobe Linux binary"
+  require_dir_present "${PAYLOAD_DIR}/resources/gateway/node_modules" "Gateway Linux-native node_modules"
   require_executable_present "${DEBIAN_ROOT}/usr/bin/${PACKAGE_NAME}" "Package launcher"
   require_file_present "${DEBIAN_ROOT}/usr/share/applications/${PACKAGE_NAME}.desktop" "Desktop entry"
   require_executable_present "${DEBIAN_ROOT}/DEBIAN/postinst" "postinst maintainer script"
@@ -137,6 +164,7 @@ prepare_permissions() {
   chmod 0755 "${DEBIAN_ROOT}/usr/bin/${PACKAGE_NAME}"
   chmod 0755 "${DEBIAN_ROOT}/DEBIAN/postinst" "${DEBIAN_ROOT}/DEBIAN/prerm" "${DEBIAN_ROOT}/DEBIAN/postrm"
   chmod 0755 "${PAYLOAD_DIR}/electron" "${PAYLOAD_DIR}/node/bin/node" "${PAYLOAD_DIR}/resources/opencode/opencode"
+  require_chrome_sandbox_if_present "${PAYLOAD_DIR}/chrome-sandbox"
   chmod 4755 "${PAYLOAD_DIR}/chrome-sandbox"
 }
 

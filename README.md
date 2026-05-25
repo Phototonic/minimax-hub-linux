@@ -38,7 +38,7 @@ Use `rpm/DEPENDENCIES.md` for package name mappings. The RPM spec is the authori
 Run commands from the repository root.
 
 ```bash
-bash -n build.sh build-rpm.sh scripts/*.sh tests/*.sh
+bash -n scripts/*.sh build.sh build-rpm.sh linux-build/DEBIAN/postinst linux-build/DEBIAN/prerm linux-build/DEBIAN/postrm tests/*.sh
 bash scripts/extract-windows-payload.sh --source "/path/to/MiniMax Hub"
 bash scripts/inspect-payload.sh
 bash scripts/fetch-electron-linux.sh --version VERSION

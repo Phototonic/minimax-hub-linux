@@ -45,7 +45,7 @@ Native module builds may also need compiler, Python, make, and SQLite developmen
 Before building, check every maintained shell entry point:
 
 ```bash
-bash -n build.sh build-rpm.sh scripts/*.sh tests/*.sh
+bash -n scripts/*.sh build.sh build-rpm.sh linux-build/DEBIAN/postinst linux-build/DEBIAN/prerm linux-build/DEBIAN/postrm tests/*.sh
 ```
 
 ## Source Payload Extraction
@@ -178,7 +178,7 @@ Run the checks that match your stage of work:
 
 | Stage | Command |
 | --- | --- |
-| Shell syntax | `bash -n build.sh build-rpm.sh scripts/*.sh tests/*.sh` |
+| Shell syntax | `bash -n scripts/*.sh build.sh build-rpm.sh linux-build/DEBIAN/postinst linux-build/DEBIAN/prerm linux-build/DEBIAN/postrm tests/*.sh` |
 | Payload structure | `bash tests/verify-payload.sh` |
 | Runtime versions | `bash scripts/smoke-runtime.sh` |
 | OpenCode binary | `bash tests/smoke-opencode.sh` |
@@ -346,11 +346,11 @@ If desktop validation fails, run:
 bash tests/verify-desktop.sh
 ```
 
-Install `desktop-file-utils` to use `desktop-file-validate`. The package maintainer scripts call `update-desktop-database` when available. The desktop file must launch `minimax-hub`, include `%u` or `%U` for protocol URLs, include `x-scheme-handler/` entries, and include the `X-MiniMaxHub-Protocol-Schemes` discovery marker.
+Install `desktop-file-utils` to use `desktop-file-validate`. The package maintainer scripts call `update-desktop-database` when available. The desktop file must launch `minimax-hub`, include `%u` or `%U` for protocol URLs, include `x-scheme-handler/` entries, and include the non-placeholder `X-MiniMaxHub-Protocol-Schemes` discovery marker. Current package metadata registers the conservative `minimax-hub` scheme.
 
 ### chrome-sandbox Failure
 
-Electron may require `chrome-sandbox` to be owned by root with mode `4755`. The build normalizes this in `linux-build`, and package scripts try to fix it after install.
+Electron may require `chrome-sandbox` to be owned by root with mode `4755`. The build normalizes this in `linux-build`, and package scripts try to fix it after install only when it is a regular non-symlink executable.
 
 Check an installed package with:
 

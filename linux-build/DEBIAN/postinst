@@ -13,9 +13,12 @@ refresh_desktop_caches() {
 
 fix_chrome_sandbox() {
   local sandbox="/opt/minimax-hub/chrome-sandbox"
-  [[ -e "${sandbox}" ]] || return 0
-  chown root:root "${sandbox}" || true
-  chmod 4755 "${sandbox}" || true
+  [[ -e "${sandbox}" || -L "${sandbox}" ]] || return 0
+  [[ ! -L "${sandbox}" ]] || { echo "Refusing to set setuid mode on symlink chrome-sandbox: ${sandbox}" >&2; return 1; }
+  [[ -f "${sandbox}" ]] || { echo "Refusing to set setuid mode on non-regular chrome-sandbox: ${sandbox}" >&2; return 1; }
+  [[ -x "${sandbox}" ]] || { echo "Refusing to set setuid mode on non-executable chrome-sandbox: ${sandbox}" >&2; return 1; }
+  chown root:root "${sandbox}"
+  chmod 4755 "${sandbox}"
 }
 
 case "${1:-configure}" in

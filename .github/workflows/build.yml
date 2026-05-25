@@ -13,6 +13,10 @@ on:
         description: 'Optional runner-local complete payload root to copy into linux-build/opt/minimax-hub before package builds.'
         required: false
         type: string
+      license_acknowledgement:
+        description: 'Required value for payload-backed package builds unless repository variable MINIMAX_HUB_LICENSE_ACKNOWLEDGEMENT has the same value: I approve license and provenance for proprietary payload-bearing artifacts in this private/internal run.'
+        required: false
+        type: string
       runner_label:
         description: 'Optional runner label for payload-backed builds, for example self-hosted.'
         required: false
@@ -35,7 +39,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Validate shell syntax
-        run: bash -n scripts/*.sh build.sh build-rpm.sh tests/*.sh
+        run: bash -n scripts/*.sh build.sh build-rpm.sh linux-build/DEBIAN/postinst linux-build/DEBIAN/prerm linux-build/DEBIAN/postrm tests/*.sh
 
   incomplete-payload:
     name: Baseline incomplete payload behavior
@@ -71,7 +75,7 @@ jobs:
     name: Debian package
     runs-on: ${{ inputs.runner_label || vars.MINIMAX_HUB_RUNNER_LABEL || 'ubuntu-latest' }}
     needs: incomplete-payload
-    if: ${{ (inputs.payload_path || vars.MINIMAX_HUB_PAYLOAD_PATH || '') != '' }}
+    if: ${{ github.event_name == 'workflow_dispatch' && (inputs.payload_path || vars.MINIMAX_HUB_PAYLOAD_PATH || '') != '' && (inputs.license_acknowledgement == 'I approve license and provenance for proprietary payload-bearing artifacts in this private/internal run.' || vars.MINIMAX_HUB_LICENSE_ACKNOWLEDGEMENT == 'I approve license and provenance for proprietary payload-bearing artifacts in this private/internal run.') }}
     env:
       PAYLOAD_PATH: ${{ inputs.payload_path || vars.MINIMAX_HUB_PAYLOAD_PATH }}
     steps:
@@ -106,7 +110,7 @@ jobs:
     name: RPM package
     runs-on: ${{ inputs.runner_label || vars.MINIMAX_HUB_RUNNER_LABEL || 'ubuntu-latest' }}
     needs: incomplete-payload
-    if: ${{ (inputs.payload_path || vars.MINIMAX_HUB_PAYLOAD_PATH || '') != '' }}
+    if: ${{ github.event_name == 'workflow_dispatch' && (inputs.payload_path || vars.MINIMAX_HUB_PAYLOAD_PATH || '') != '' && (inputs.license_acknowledgement == 'I approve license and provenance for proprietary payload-bearing artifacts in this private/internal run.' || vars.MINIMAX_HUB_LICENSE_ACKNOWLEDGEMENT == 'I approve license and provenance for proprietary payload-bearing artifacts in this private/internal run.') }}
     env:
       PAYLOAD_PATH: ${{ inputs.payload_path || vars.MINIMAX_HUB_PAYLOAD_PATH }}
     steps:

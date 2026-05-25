@@ -2,9 +2,10 @@
 Type=Application
 Name=MiniMax Hub
 Comment=Unofficial MiniMax Hub Linux package scaffold
-Exec=minimax-hub
+Exec=minimax-hub %u
 Icon=minimax-hub
 Terminal=false
 Categories=Utility;
 StartupNotify=true
-X-MiniMaxHub-Protocol-Schemes=planned-discovery
+MimeType=x-scheme-handler/minimax-hub;
+X-MiniMaxHub-Protocol-Schemes=minimax-hub

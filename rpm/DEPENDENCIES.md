@@ -124,4 +124,4 @@ Electron dependency names differ across distro families. If a distro does not pr
 
 The package bundles Electron, Node, OpenCode, FFmpeg, FFprobe, and rebuilt native modules under `/opt/minimax-hub`. Distro packages still need GTK, NSS, X11, audio, desktop integration, and related system libraries.
 
-`chrome-sandbox` needs setuid root mode `4755` for the standard Electron sandbox path. The Debian build sets that mode before packaging. The RPM spec records it with `%attr(4755,root,root)` and also fixes ownership and mode in `%post` when possible.
+`chrome-sandbox` needs setuid root mode `4755` for the standard Electron sandbox path. The Debian build sets that mode before packaging only after confirming it is a regular non-symlink executable. The RPM spec records it with `%attr(4755,root,root)` and also fixes ownership and mode in `%post` when the installed path remains a regular non-symlink executable.

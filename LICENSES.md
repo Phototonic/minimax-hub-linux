@@ -52,6 +52,8 @@ output/minimax-hub-0.1.44-1.x86_64.rpm
 
 The scripts reject common Windows runtime artifacts in Linux payloads, including `.exe`, `.dll`, `.bat`, `.cmd`, and directories whose names identify Windows-specific module builds. Do not bypass those checks.
 
+Publishing generated payload-bearing packages from CI or release workflows requires a manual dispatch with the explicit license and provenance acknowledgement input; payload-backed build jobs require either that input or repository variable MINIMAX_HUB_LICENSE_ACKNOWLEDGEMENT. Automatic workflow-run publication is intentionally disabled because generated `.deb` and `.rpm` files can contain proprietary MiniMax payloads.
+
 ## Release Notes Requirements
 
 Release notes for generated packages should state:

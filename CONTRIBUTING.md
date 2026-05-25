@@ -46,7 +46,7 @@ bash build-rpm.sh
 For documentation-only changes, run a safe syntax check on documented shell scripts when possible:
 
 ```bash
-bash -n build.sh build-rpm.sh scripts/*.sh tests/*.sh
+bash -n scripts/*.sh build.sh build-rpm.sh linux-build/DEBIAN/postinst linux-build/DEBIAN/prerm linux-build/DEBIAN/postrm tests/*.sh
 ```
 
 For script or packaging changes, run the relevant checks from this matrix:
@@ -76,7 +76,7 @@ Before publishing a release artifact, verify each item:
 3. Proprietary MiniMax payloads, runtime archives, generated reports, and package artifacts are not committed.
 4. Electron, Node, OpenCode, FFmpeg, and FFprobe were fetched from documented sources or staged from local files with recorded checksums.
 5. Native modules were rebuilt for Linux x64 glibc and verified with the packaged Node runtime.
-6. `bash -n build.sh build-rpm.sh scripts/*.sh tests/*.sh` passes.
+6. `bash -n scripts/*.sh build.sh build-rpm.sh linux-build/DEBIAN/postinst linux-build/DEBIAN/prerm linux-build/DEBIAN/postrm tests/*.sh` passes.
 7. `bash tests/verify-payload.sh` passes after assembly.
 8. Runtime, OpenCode, native module, MCP, gateway, and desktop smoke tests pass on the release build host.
 9. `bash build.sh` creates `output/minimax-hub_0.1.44_amd64.deb` and runs `tests/verify-deb.sh` successfully.
@@ -84,10 +84,11 @@ Before publishing a release artifact, verify each item:
 11. Install the `.deb` on a Debian or Ubuntu test system and launch `minimax-hub`.
 12. Install the `.rpm` on a Fedora, RHEL, Rocky, or compatible RPM test system and launch `minimax-hub`.
 13. Confirm desktop entry registration, protocol handler metadata, `chrome-sandbox` mode, gateway startup, MCP startup, OpenCode startup, and FFmpeg execution.
-14. Record known risks, unsupported distros, and any runtime source substitutions in release notes.
+14. Manually dispatch payload-backed build and release workflows only after entering the required license and provenance acknowledgement string; payload-backed build workflows may instead use repository variable MINIMAX_HUB_LICENSE_ACKNOWLEDGEMENT set to the exact build acknowledgement string.
+15. Record known risks, unsupported distros, and any runtime source substitutions in release notes.
 
 ## Release Artifact Policy
 
-Release artifacts must be built from the local staged inputs for that release. Do not publish private download URLs, fake checksums, or claims that proprietary MiniMax payloads are covered by this repository license.
+Release artifacts must be built from the local staged inputs for that release. GitHub workflow publication is manual-only for payload-bearing `.deb` and `.rpm` files and requires the explicit license and provenance acknowledgement input for releases, and build workflows require either that input or MINIMAX_HUB_LICENSE_ACKNOWLEDGEMENT before payload-backed jobs run. Do not publish private download URLs, fake checksums, or claims that proprietary MiniMax payloads are covered by this repository license.
 
 If a release includes generated `.deb` or `.rpm` files outside git, the release notes must state that the package is an unofficial community build, identify the source of each Linux runtime component at a high level, and tell users that MiniMax proprietary components remain subject to upstream MiniMax terms.
