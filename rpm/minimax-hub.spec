@@ -1,7 +1,12 @@
+%global app_name minimax-hub
+%global app_dir /opt/minimax-hub
+%global staged_root %{?_staged_root}%{!?_staged_root:%{_builddir}/linux-build}
+%global payload_filelist %{?_payload_filelist}%{!?_payload_filelist:%{_builddir}/minimax-hub-payload.files}
+
 Name: minimax-hub
-Version: 0.1.44
+Version: %{?_version}%{!?_version:0.1.44}
 Release: 1%{?dist}
-Summary: MiniMax Hub unofficial Linux package scaffold
+Summary: MiniMax Hub unofficial Linux package
 License: Proprietary payload not included
 BuildArch: x86_64
 Requires: gtk3
@@ -12,26 +17,44 @@ Requires: libxcb
 Requires: libXcomposite
 Requires: libXdamage
 Requires: libXrandr
+Requires: libXScrnSaver
+Requires: libXtst
 Requires: alsa-lib
+Requires: atk
+Requires: at-spi2-atk
+Requires: cups-libs
 Requires: libdrm
 Requires: mesa-libgbm
+Requires: pango
 Requires: xdg-utils
 Requires: desktop-file-utils
+Requires(post): desktop-file-utils
+Requires(postun): desktop-file-utils
 
 %description
-Scaffold spec for the future MiniMax Hub Linux RPM package. Proprietary MiniMax
-payloads, generated binaries, and downloaded runtimes are not included in this
-repository. Later tasks will assemble the shared linux-build payload before RPM
-packaging.
+Unofficial Linux RPM package for MiniMax Hub built from the local staged
+linux-build payload. The proprietary application payload is not included in
+this source repository.
 
 %prep
-echo "Scaffold only: RPM prep will consume an assembled linux-build tree later."
+test -d "%{staged_root}/opt/minimax-hub"
+test -s "%{staged_root}/usr/bin/minimax-hub"
+test -s "%{staged_root}/usr/share/applications/minimax-hub.desktop"
 
 %build
-echo "Scaffold only: RPM build is not implemented yet."
+:
 
 %install
-echo "Scaffold only: RPM install will copy the staged payload later."
+rm -rf "%{buildroot}"
+mkdir -p "%{buildroot}/opt" "%{buildroot}/usr/bin" "%{buildroot}/usr/share/applications"
+cp -a "%{staged_root}/opt/minimax-hub" "%{buildroot}/opt/"
+install -m 0755 "%{staged_root}/usr/bin/minimax-hub" "%{buildroot}/usr/bin/minimax-hub"
+install -m 0644 "%{staged_root}/usr/share/applications/minimax-hub.desktop" "%{buildroot}/usr/share/applications/minimax-hub.desktop"
+chmod 0755 "%{buildroot}/opt/minimax-hub/electron" || :
+chmod 4755 "%{buildroot}/opt/minimax-hub/chrome-sandbox" || :
+chmod 0755 "%{buildroot}/opt/minimax-hub/node/bin/node" || :
+chmod 0755 "%{buildroot}/opt/minimax-hub/resources/opencode/opencode" || :
+find "%{buildroot}/opt/minimax-hub" -mindepth 1 \( -type f -o -type l \) -printf '/%%P\n' | sed 's#^/#/opt/minimax-hub/#' | LC_ALL=C sort | grep -Fxv '/opt/minimax-hub/chrome-sandbox' > "%{payload_filelist}"
 
 %post
 if command -v update-desktop-database >/dev/null 2>&1; then
@@ -45,9 +68,6 @@ if [ -f /opt/minimax-hub/chrome-sandbox ]; then
   chmod 4755 /opt/minimax-hub/chrome-sandbox || :
 fi
 
-%preun
-echo "MiniMax Hub scaffold preun: no service shutdown required yet." >&2
-
 %postun
 if command -v update-desktop-database >/dev/null 2>&1; then
   update-desktop-database /usr/share/applications || :
@@ -56,7 +76,8 @@ if command -v gtk-update-icon-cache >/dev/null 2>&1; then
   gtk-update-icon-cache -q -t -f /usr/share/icons/hicolor || :
 fi
 
-%files
+%files -f %{payload_filelist}
 %dir /opt/minimax-hub
+%attr(4755,root,root) /opt/minimax-hub/chrome-sandbox
 /usr/bin/minimax-hub
 /usr/share/applications/minimax-hub.desktop
