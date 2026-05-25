@@ -19,7 +19,7 @@ Current package metadata:
 | Launcher | `/usr/bin/minimax-hub` |
 | Desktop file | `/usr/share/applications/minimax-hub.desktop` |
 
-The payload is assembled at `linux-build/opt/minimax-hub`. Runtime archives are cached under `.cache/runtimes`, Windows source resources are staged under `.cache/windows-payload/payload`, and assembly reports are written under `.cache/assembly`.
+The payload is assembled at `linux-build/opt/minimax-hub`. Runtime archives are cached under `.cache/runtimes`, Windows source resources are staged under `.cache/windows-payload/payload`, the installed desktop icon is staged from local payload PNG resources into `linux-build/usr/share/icons/hicolor/256x256/apps/minimax-hub.png`, and assembly reports are written under `.cache/assembly`.
 
 ## Supported Build Hosts
 
@@ -104,6 +104,7 @@ Allowed source inputs are local files supplied by the builder:
 | Input | Source | Staged path |
 | --- | --- | --- |
 | MiniMax app resources | Local MiniMax Hub install root passed with `--source` | `.cache/windows-payload/payload` |
+| Desktop icon | Local MiniMax payload PNG from staged icons, assets, resources, or top-level payload files | `linux-build/usr/share/icons/hicolor/256x256/apps/minimax-hub.png` |
 | Electron Linux runtime | Official Electron Linux x64 release or local archive | `linux-build/opt/minimax-hub/electron` |
 | Node Linux runtime | Official Node Linux x64 release or local archive | `linux-build/opt/minimax-hub/node/bin/node` |
 | OpenCode Linux binary | OpenCode Linux x64 release or local archive | `linux-build/opt/minimax-hub/resources/opencode/opencode` |
@@ -121,4 +122,4 @@ bash tests/smoke-native-modules.sh
 bash tests/verify-payload.sh
 ```
 
-Missing payload errors mean extraction has not staged the local MiniMax app resources. Missing Electron, OpenCode, Node, FFmpeg, or native module errors mean the matching fetch or rebuild step has not completed for Linux. Forbidden Windows artifact errors mean a `.exe`, `.dll`, `.bat`, `.cmd`, or Windows-specific directory remained in the Linux payload and must be removed before packaging.
+Missing payload errors mean extraction has not staged the local MiniMax app resources. Missing icon errors mean no usable local PNG was found in staged payload resources for the installed hicolor icon path. Missing Electron, OpenCode, Node, FFmpeg, or native module errors mean the matching fetch or rebuild step has not completed for Linux. Forbidden Windows artifact errors mean a `.exe`, `.dll`, `.bat`, `.cmd`, or Windows-specific directory remained in the Linux payload and must be removed before packaging. Updater metadata such as `resources/app-update.yml` or top-level `app-update.yml` is removed from the final Linux payload and must not appear in packages.

@@ -29,6 +29,7 @@ The build can stage these runtime components:
 | Component | Default handling | Notes |
 | --- | --- | --- |
 | MiniMax app resources | Copied from a local MiniMax Hub install root | Proprietary payload, not repository content |
+| Desktop icon | Staged from local MiniMax payload PNG resources | Proprietary payload, not repository content |
 | Electron Linux x64 | Fetched from Electron releases or provided as a local archive | Checksum verified with Electron `SHASUMS512.txt` |
 | Node Linux x64 | Fetched from Node releases or provided as a local archive | Checksum verified with Node `SHASUMS256.txt` |
 | OpenCode Linux x64 | Fetched from OpenCode releases or provided as a local archive | Local SHA256 recorded when upstream checksums are unavailable |
@@ -50,7 +51,7 @@ output/minimax-hub_0.1.44_amd64.deb
 output/minimax-hub-0.1.44-1.x86_64.rpm
 ```
 
-The scripts reject common Windows runtime artifacts in Linux payloads, including `.exe`, `.dll`, `.bat`, `.cmd`, and directories whose names identify Windows-specific module builds. Do not bypass those checks.
+The scripts reject common Windows runtime artifacts in Linux payloads, including `.exe`, `.dll`, `.bat`, `.cmd`, and directories whose names identify Windows-specific module builds. They also remove and reject Linux-disabled updater metadata such as `resources/app-update.yml` or top-level `app-update.yml` from final payloads and packages. Do not bypass those checks.
 
 Publishing generated payload-bearing packages from CI or release workflows requires a manual dispatch with the explicit license and provenance acknowledgement input; payload-backed build jobs require either that input or repository variable MINIMAX_HUB_LICENSE_ACKNOWLEDGEMENT. Automatic workflow-run publication is intentionally disabled because generated `.deb` and `.rpm` files can contain proprietary MiniMax payloads.
 

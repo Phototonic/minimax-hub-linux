@@ -150,7 +150,7 @@ Assemble the final Linux payload from staged source resources and Linux replacem
 bash scripts/assemble-linux-payload.sh
 ```
 
-The assembler preserves an existing Linux `resources/gateway/node_modules` tree, copies app resources, copies Linux runtimes, runs normalization by default, and verifies final prerequisites.
+The assembler preserves an existing Linux `resources/gateway/node_modules` tree, copies app resources, stages the installed desktop icon from local payload PNG resources, removes Linux-disabled updater metadata such as `resources/app-update.yml` or top-level `app-update.yml`, copies Linux runtimes, runs normalization by default, and verifies final prerequisites.
 
 You can pass explicit runtime overrides:
 
@@ -170,7 +170,7 @@ Run normalization directly when needed:
 bash scripts/normalize-payload.sh
 ```
 
-Normalization fixes executable bits, removes CRLF line endings from packaged text files, checks for forbidden Windows artifacts, and writes `.cache/assembly/inventory.txt`, `.cache/assembly/sha256.txt`, and `.cache/assembly/normalization-report.txt`.
+Normalization fixes executable bits, removes CRLF line endings from packaged text files, removes Linux-disabled updater metadata, checks for forbidden Windows artifacts, and writes `.cache/assembly/inventory.txt`, `.cache/assembly/sha256.txt`, and `.cache/assembly/normalization-report.txt`.
 
 ## Test Matrix
 
@@ -189,7 +189,7 @@ Run the checks that match your stage of work:
 | Debian artifact | `bash tests/verify-deb.sh output/minimax-hub_0.1.44_amd64.deb` |
 | RPM artifact | `bash tests/verify-rpm.sh output/minimax-hub-0.1.44-1.x86_64.rpm` |
 
-`tests/smoke-gateway.sh` starts the packaged gateway with bundled Node and probes `http://127.0.0.1:8001/health` and `/`. `tests/smoke-mcp.sh` starts MCP tools with bundled Node and accepts either a clean help exit or a timeout after startup. `tests/verify-desktop.sh` requires protocol handler metadata in the desktop file.
+`tests/smoke-gateway.sh` starts the packaged gateway with bundled Node and probes `http://127.0.0.1:8001/health` and `/`. `tests/smoke-mcp.sh` starts MCP tools with bundled Node and accepts either a clean help exit or a timeout after startup. `tests/verify-desktop.sh` requires protocol handler metadata in the desktop file and the installed hicolor icon at `linux-build/usr/share/icons/hicolor/256x256/apps/minimax-hub.png`.
 
 ## Build Packages
 
@@ -217,9 +217,9 @@ Expected artifact:
 output/minimax-hub-0.1.44-1.x86_64.rpm
 ```
 
-`build.sh` validates Debian metadata, normalizes the package tree, checks required payload files, rejects forbidden Windows artifacts, builds with `dpkg-deb --root-owner-group`, and runs `tests/verify-deb.sh`.
+`build.sh` validates Debian metadata, normalizes the package tree, checks required payload files and the installed icon, rejects forbidden Windows artifacts and disabled updater metadata, builds with `dpkg-deb --root-owner-group`, and runs `tests/verify-deb.sh`.
 
-`build-rpm.sh` validates the payload before invoking RPM tools, requires `rpmbuild`, builds from `rpm/minimax-hub.spec`, copies the first `minimax-hub-0.1.44-1*.x86_64.rpm` match to `output/minimax-hub-0.1.44-1.x86_64.rpm`, and runs `tests/verify-rpm.sh` when `rpm` is installed.
+`build-rpm.sh` validates the payload and installed icon before invoking RPM tools, rejects disabled updater metadata, requires `rpmbuild`, builds from `rpm/minimax-hub.spec`, copies the first `minimax-hub-0.1.44-1*.x86_64.rpm` match to `output/minimax-hub-0.1.44-1.x86_64.rpm`, and runs `tests/verify-rpm.sh` when `rpm` is installed.
 
 ## Install Packages
 
@@ -348,6 +348,8 @@ bash tests/verify-desktop.sh
 
 Install `desktop-file-utils` to use `desktop-file-validate`. The package maintainer scripts call `update-desktop-database` when available. The desktop file must launch `minimax-hub`, include `%u` or `%U` for protocol URLs, include `x-scheme-handler/` entries, and include the non-placeholder `X-MiniMaxHub-Protocol-Schemes` discovery marker. Current package metadata registers the conservative `minimax-hub` scheme.
 
+If desktop validation reports a missing icon, rerun payload extraction and assembly with a local MiniMax payload that contains a PNG under `resources/icons`, `resources/assets`, `resources`, or top-level payload files. The repository intentionally does not commit a proprietary icon.
+
 ### chrome-sandbox Failure
 
 Electron may require `chrome-sandbox` to be owned by root with mode `4755`. The build normalizes this in `linux-build`, and package scripts try to fix it after install only when it is a regular non-symlink executable.
@@ -382,4 +384,4 @@ bash scripts/normalize-payload.sh
 bash tests/verify-payload.sh
 ```
 
-Do not bypass this check. Linux packages must contain Linux runtimes and Linux-native modules.
+Do not bypass this check. Linux packages must contain Linux runtimes and Linux-native modules. Final Linux payloads and packages must also exclude updater metadata such as `resources/app-update.yml` or top-level `app-update.yml`; it may remain only in extraction/source caches.

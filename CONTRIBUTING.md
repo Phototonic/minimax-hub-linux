@@ -73,7 +73,7 @@ Before publishing a release artifact, verify each item:
 
 1. `VERSION`, `package-manifest.json`, `linux-build/DEBIAN/control`, and `rpm/minimax-hub.spec` agree on the release version.
 2. The MiniMax source payload came from a local installation supplied by the release builder.
-3. Proprietary MiniMax payloads, runtime archives, generated reports, and package artifacts are not committed.
+3. Proprietary MiniMax payloads, runtime archives, generated reports, generated icons, and package artifacts are not committed.
 4. Electron, Node, OpenCode, FFmpeg, and FFprobe were fetched from documented sources or staged from local files with recorded checksums.
 5. Native modules were rebuilt for Linux x64 glibc and verified with the packaged Node runtime.
 6. `bash -n scripts/*.sh build.sh build-rpm.sh linux-build/DEBIAN/postinst linux-build/DEBIAN/prerm linux-build/DEBIAN/postrm tests/*.sh` passes.
@@ -83,9 +83,10 @@ Before publishing a release artifact, verify each item:
 10. `bash build-rpm.sh` creates `output/minimax-hub-0.1.44-1.x86_64.rpm` and runs `tests/verify-rpm.sh` successfully when `rpm` is available.
 11. Install the `.deb` on a Debian or Ubuntu test system and launch `minimax-hub`.
 12. Install the `.rpm` on a Fedora, RHEL, Rocky, or compatible RPM test system and launch `minimax-hub`.
-13. Confirm desktop entry registration, protocol handler metadata, `chrome-sandbox` mode, gateway startup, MCP startup, OpenCode startup, and FFmpeg execution.
-14. Manually dispatch payload-backed build and release workflows only after entering the required license and provenance acknowledgement string; payload-backed build workflows may instead use repository variable MINIMAX_HUB_LICENSE_ACKNOWLEDGEMENT set to the exact build acknowledgement string.
-15. Record known risks, unsupported distros, and any runtime source substitutions in release notes.
+13. Confirm desktop entry registration, installed hicolor icon packaging, protocol handler metadata, `chrome-sandbox` mode, gateway startup, MCP startup, OpenCode startup, and FFmpeg execution.
+14. Confirm final payloads and packages do not contain `resources/app-update.yml` or top-level `app-update.yml`; updater metadata may remain only in local source/extraction caches.
+15. Manually dispatch payload-backed build and release workflows only after entering the required license and provenance acknowledgement string; payload-backed build workflows may instead use repository variable MINIMAX_HUB_LICENSE_ACKNOWLEDGEMENT set to the exact build acknowledgement string.
+16. Record known risks, unsupported distros, and any runtime source substitutions in release notes.
 
 ## Release Artifact Policy
 
