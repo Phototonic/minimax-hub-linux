@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+echo "MiniMax Hub scaffold prerm: no service shutdown required yet." >&2
+
+exit 0

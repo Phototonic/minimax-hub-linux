@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+APP_DIR="/opt/minimax-hub"
+ELECTRON_BIN="${APP_DIR}/electron"
+
+if [[ ! -x "${ELECTRON_BIN}" ]]; then
+  echo "MiniMax Hub scaffold launcher: ${ELECTRON_BIN} is not assembled yet." >&2
+  exit 1
+fi
+
+export PATH="${APP_DIR}/node/bin:${APP_DIR}/resources/ffmpeg:${PATH}"
+export FFMPEG_PATH="${APP_DIR}/resources/ffmpeg/ffmpeg"
+export FFPROBE_PATH="${APP_DIR}/resources/ffmpeg/ffprobe"
+export OPENCODE_CONFIG_DIR="${APP_DIR}/resources/opencode/config"
+
+exec "${ELECTRON_BIN}" "${APP_DIR}/resources/app.asar" "$@"

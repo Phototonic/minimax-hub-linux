@@ -1,0 +1,8 @@
+FROM rockylinux:9
+
+LABEL org.opencontainers.image.title="minimax-hub-linux rpm scaffold"
+LABEL org.opencontainers.image.description="Placeholder RPM build environment for later MiniMax Hub Linux packaging tasks."
+
+WORKDIR /work
+
+CMD ["bash", "-lc", "echo 'Scaffold only: RPM Docker build environment is not implemented yet.'"]

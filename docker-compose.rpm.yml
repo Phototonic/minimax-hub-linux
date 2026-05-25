@@ -1,0 +1,9 @@
+services:
+  rpm-builder:
+    build:
+      context: .
+      dockerfile: Dockerfile.rpm
+    working_dir: /work
+    volumes:
+      - .:/work:ro
+    command: bash -lc "echo 'Scaffold only: RPM compose build is not implemented yet.'"

@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=MiniMax Hub
+Comment=Unofficial MiniMax Hub Linux package scaffold
+Exec=minimax-hub
+Icon=minimax-hub
+Terminal=false
+Categories=Utility;
+StartupNotify=true
+X-MiniMaxHub-Protocol-Schemes=planned-discovery

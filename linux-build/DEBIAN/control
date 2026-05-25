@@ -1,0 +1,10 @@
+Package: minimax-hub
+Version: 0.1.44
+Section: utils
+Priority: optional
+Architecture: amd64
+Maintainer: MiniMax Hub Linux Community <noreply@example.invalid>
+Depends: libgtk-3-0, libnss3, libx11-6, libx11-xcb1, libxcb1, libxcomposite1, libxdamage1, libxrandr2, libasound2, libdrm2, libgbm1, xdg-utils, desktop-file-utils
+Description: MiniMax Hub unofficial Linux package scaffold
+ This is a scaffold control file for a future community Linux package.
+ Proprietary MiniMax payloads are not included in this repository.

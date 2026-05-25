@@ -1,0 +1,43 @@
+# Generated payloads and build outputs
+.cache/
+output/
+dist/
+build/
+tmp/
+.omo/
+*.log
+
+# Package artifacts
+*.deb
+*.rpm
+!Dockerfile.rpm
+*.changes
+*.buildinfo
+
+# RPM/deb build trees
+rpm/BUILD/
+rpm/BUILDROOT/
+rpm/RPMS/
+rpm/SRPMS/
+rpm/BUILD*.log
+
+# Extracted proprietary payloads
+windows-payload/
+payload/
+proprietary-payload/
+linux-build/opt/minimax-hub/**
+!linux-build/opt/minimax-hub/
+!linux-build/opt/minimax-hub/.gitkeep
+
+# Dependencies and caches
+node_modules/
+.npm/
+.pnpm-store/
+.yarn/
+
+# Editor and OS files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
