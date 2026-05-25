@@ -1,19 +1,30 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-echo "MiniMax Hub scaffold postinst: no payload actions required yet." >&2
+refresh_desktop_caches() {
+  if command -v update-desktop-database >/dev/null 2>&1; then
+    update-desktop-database /usr/share/applications || true
+  fi
 
-if command -v update-desktop-database >/dev/null 2>&1; then
-  update-desktop-database /usr/share/applications || true
-fi
+  if command -v gtk-update-icon-cache >/dev/null 2>&1; then
+    gtk-update-icon-cache -q -t -f /usr/share/icons/hicolor || true
+  fi
+}
 
-if command -v gtk-update-icon-cache >/dev/null 2>&1; then
-  gtk-update-icon-cache -q -t -f /usr/share/icons/hicolor || true
-fi
+fix_chrome_sandbox() {
+  local sandbox="/opt/minimax-hub/chrome-sandbox"
+  [[ -e "${sandbox}" ]] || return 0
+  chown root:root "${sandbox}" || true
+  chmod 4755 "${sandbox}" || true
+}
 
-if [[ -f /opt/minimax-hub/chrome-sandbox ]]; then
-  chown root:root /opt/minimax-hub/chrome-sandbox || true
-  chmod 4755 /opt/minimax-hub/chrome-sandbox || true
-fi
+case "${1:-configure}" in
+  configure|triggered)
+    fix_chrome_sandbox
+    refresh_desktop_caches
+    ;;
+  *)
+    ;;
+esac
 
 exit 0

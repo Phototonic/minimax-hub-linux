@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-echo "MiniMax Hub scaffold prerm: no service shutdown required yet." >&2
+case "${1:-remove}" in
+  remove|upgrade|deconfigure)
+    ;;
+  *)
+    ;;
+esac
 
 exit 0
