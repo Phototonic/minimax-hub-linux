@@ -25,7 +25,10 @@ assert_contains "${contents}" "./opt/minimax-hub/node/bin/node" "dpkg-deb --cont
 assert_contains "${contents}" "./opt/minimax-hub/resources/opencode/opencode" "dpkg-deb --contents output"
 assert_contains "${contents}" "./usr/bin/minimax-hub" "dpkg-deb --contents output"
 assert_contains "${contents}" "./usr/share/applications/minimax-hub.desktop" "dpkg-deb --contents output"
+assert_contains "${contents}" "./usr/share/icons/hicolor/256x256/apps/minimax-hub.png" "dpkg-deb --contents output"
 assert_contains "${contents}" "./opt/minimax-hub/chrome-sandbox" "dpkg-deb --contents output"
+[[ "${contents}" != *"./opt/minimax-hub/resources/app-update.yml"* ]] || fail "Debian package must not include upstream updater metadata: ./opt/minimax-hub/resources/app-update.yml"
+[[ "${contents}" != *"./opt/minimax-hub/app-update.yml"* ]] || fail "Debian package must not include upstream updater metadata: ./opt/minimax-hub/app-update.yml"
 
 if command -v dpkg >/dev/null 2>&1; then
   if ! dpkg --contents "${deb_path}" | awk '/\.\/opt\/minimax-hub\/chrome-sandbox$/ { if ($1 ~ /^-rws/) found=1 } END { exit(found ? 0 : 1) }'; then
@@ -37,7 +40,8 @@ tmp_dir="$(mktemp -d)"
 trap 'rm -rf "${tmp_dir}"' EXIT
 dpkg-deb --extract "${deb_path}" "${tmp_dir}/root"
 validate_desktop_file "${tmp_dir}/root/usr/share/applications/minimax-hub.desktop"
+require_file "${tmp_dir}/root/usr/share/icons/hicolor/256x256/apps/minimax-hub.png"
 assert_no_forbidden_windows_artifacts "${tmp_dir}/root/opt/minimax-hub"
+assert_no_linux_updater_metadata "${tmp_dir}/root/opt/minimax-hub"
 
 echo "Debian package verification passed: ${deb_path}"
-

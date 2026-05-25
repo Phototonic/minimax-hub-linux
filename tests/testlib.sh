@@ -10,6 +10,7 @@ DEBIAN_CONTROL="${PROJECT_ROOT}/linux-build/DEBIAN/control"
 DESKTOP_FILE="${PROJECT_ROOT}/linux-build/usr/share/applications/minimax-hub.desktop"
 RPM_SPEC="${PROJECT_ROOT}/rpm/minimax-hub.spec"
 LAUNCHER_FILE="${PROJECT_ROOT}/linux-build/usr/bin/minimax-hub"
+INSTALLED_ICON="${PROJECT_ROOT}/linux-build/usr/share/icons/hicolor/256x256/apps/minimax-hub.png"
 
 fail() {
   echo "FAIL: $*" >&2
@@ -91,6 +92,12 @@ assert_no_forbidden_windows_artifacts() {
   [[ -z "${found}" ]] || fail "Forbidden Windows-specific directories found under ${root_dir}: ${found}"
 }
 
+assert_no_linux_updater_metadata() {
+  local root_dir="$1"
+  [[ ! -e "${root_dir}/resources/app-update.yml" ]] || fail "Linux payload must not include upstream updater metadata: ${root_dir}/resources/app-update.yml"
+  [[ ! -e "${root_dir}/app-update.yml" ]] || fail "Linux payload must not include upstream updater metadata: ${root_dir}/app-update.yml"
+}
+
 require_payload_not_empty() {
   local payload_dir="$1"
   require_dir "${payload_dir}"
@@ -128,12 +135,14 @@ validate_desktop_file() {
     require_desktop_key "${path}" "Categories"
   fi
 
-  local type exec_line mime_type schemes
+  local type exec_line icon_value mime_type schemes
   type="$(read_desktop_value "${path}" "Type")"
   [[ "${type}" == "Application" ]] || fail "Desktop Type must be Application, got: ${type}"
   exec_line="$(read_desktop_value "${path}" "Exec")"
   [[ "${exec_line}" == *"minimax-hub"* ]] || fail "Desktop Exec must launch minimax-hub, got: ${exec_line}"
   [[ "${exec_line}" == *"%u"* || "${exec_line}" == *"%U"* ]] || fail "Desktop Exec must include %u or %U protocol URL placeholder once protocol handlers are enabled."
+  icon_value="$(read_desktop_value "${path}" "Icon")"
+  [[ "${icon_value}" == "minimax-hub" ]] || fail "Desktop Icon must be minimax-hub, got: ${icon_value}"
   mime_type="$(read_desktop_value "${path}" "MimeType" 2>/dev/null || true)"
   [[ -n "${mime_type}" ]] || fail "Desktop file is missing MimeType protocol handler entries."
   [[ "${mime_type}" == *"x-scheme-handler/"* ]] || fail "Desktop MimeType must contain x-scheme-handler entries, got: ${mime_type}"
@@ -141,4 +150,3 @@ validate_desktop_file() {
   [[ -n "${schemes}" ]] || fail "Desktop file is missing X-MiniMaxHub-Protocol-Schemes discovery marker."
   [[ "${schemes}" != "planned-discovery" ]] || fail "Desktop protocol schemes are still the planned-discovery placeholder."
 }
-

@@ -16,9 +16,11 @@ require_executable "${payload_dir}/resources/opencode/opencode"
 require_executable "${payload_dir}/resources/ffmpeg/ffmpeg"
 require_executable "${payload_dir}/resources/ffmpeg/ffprobe"
 require_file "${PROJECT_ROOT}/linux-build/usr/share/applications/minimax-hub.desktop"
+require_file "${INSTALLED_ICON}"
 require_executable "${PROJECT_ROOT}/linux-build/usr/bin/minimax-hub"
 
 assert_no_forbidden_windows_artifacts "${payload_dir}"
+assert_no_linux_updater_metadata "${payload_dir}"
 assert_no_crlf "${PROJECT_ROOT}/linux-build/usr/bin/minimax-hub"
 assert_no_crlf "${PROJECT_ROOT}/linux-build/usr/share/applications/minimax-hub.desktop"
 assert_no_crlf "${PROJECT_ROOT}/linux-build/DEBIAN/control"
@@ -30,4 +32,3 @@ fi
 validate_desktop_file "${PROJECT_ROOT}/linux-build/usr/share/applications/minimax-hub.desktop"
 
 echo "Payload verification passed: ${payload_dir}"
-

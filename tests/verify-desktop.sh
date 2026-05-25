@@ -5,5 +5,5 @@ source "$(dirname "${BASH_SOURCE[0]}")/testlib.sh"
 
 desktop_file="${1:-${DESKTOP_FILE}}"
 validate_desktop_file "${desktop_file}"
+require_file "${INSTALLED_ICON}"
 echo "Desktop verification passed: ${desktop_file}"
-

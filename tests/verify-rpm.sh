@@ -32,7 +32,10 @@ assert_contains "${files}" "/opt/minimax-hub/node/bin/node" "rpm -qpl output"
 assert_contains "${files}" "/opt/minimax-hub/resources/opencode/opencode" "rpm -qpl output"
 assert_contains "${files}" "/usr/bin/minimax-hub" "rpm -qpl output"
 assert_contains "${files}" "/usr/share/applications/minimax-hub.desktop" "rpm -qpl output"
+assert_contains "${files}" "/usr/share/icons/hicolor/256x256/apps/minimax-hub.png" "rpm -qpl output"
 assert_contains "${files}" "/opt/minimax-hub/chrome-sandbox" "rpm -qpl output"
+[[ "${files}" != *"/opt/minimax-hub/resources/app-update.yml"* ]] || fail "RPM package must not include upstream updater metadata: /opt/minimax-hub/resources/app-update.yml"
+[[ "${files}" != *"/opt/minimax-hub/app-update.yml"* ]] || fail "RPM package must not include upstream updater metadata: /opt/minimax-hub/app-update.yml"
 assert_contains "${requires}" "gtk3" "rpm -qp --requires output"
 assert_contains "${requires}" "nss" "rpm -qp --requires output"
 assert_contains "${requires}" "desktop-file-utils" "rpm -qp --requires output"
@@ -44,16 +47,19 @@ if command -v rpm2cpio >/dev/null 2>&1 && command -v cpio >/dev/null 2>&1; then
   trap 'rm -rf "${tmp_dir}"' EXIT
   (cd "${tmp_dir}" && rpm2cpio "${rpm_path}" | cpio -idm --quiet)
   validate_desktop_file "${tmp_dir}/usr/share/applications/minimax-hub.desktop"
+  require_file "${tmp_dir}/usr/share/icons/hicolor/256x256/apps/minimax-hub.png"
   assert_no_forbidden_windows_artifacts "${tmp_dir}/opt/minimax-hub"
+  assert_no_linux_updater_metadata "${tmp_dir}/opt/minimax-hub"
 elif command -v bsdtar >/dev/null 2>&1; then
   tmp_dir="$(mktemp -d)"
   trap 'rm -rf "${tmp_dir}"' EXIT
   bsdtar -xf "${rpm_path}" -C "${tmp_dir}"
   validate_desktop_file "${tmp_dir}/usr/share/applications/minimax-hub.desktop"
+  require_file "${tmp_dir}/usr/share/icons/hicolor/256x256/apps/minimax-hub.png"
   assert_no_forbidden_windows_artifacts "${tmp_dir}/opt/minimax-hub"
+  assert_no_linux_updater_metadata "${tmp_dir}/opt/minimax-hub"
 else
   note "rpm2cpio+cpio and bsdtar are unavailable; skipping extracted RPM payload inspection after metadata checks."
 fi
 
 echo "RPM package verification passed: ${rpm_path}"
-
