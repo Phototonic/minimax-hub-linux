@@ -10,6 +10,7 @@ OUTPUT_DIR="${PROJECT_ROOT}/output"
 SPEC_FILE="${PROJECT_ROOT}/rpm/minimax-hub.spec"
 STAGED_ROOT="${PROJECT_ROOT}/linux-build"
 PAYLOAD_DIR="${DEFAULT_PAYLOAD_DIR}"
+INSTALLED_ICON="${STAGED_ROOT}/usr/share/icons/hicolor/256x256/apps/${PACKAGE_NAME}.png"
 RPM_ARTIFACT="${OUTPUT_DIR}/${PACKAGE_NAME}-${VERSION}-1.x86_64.rpm"
 
 usage() {
@@ -54,7 +55,9 @@ validate_payload() {
   [[ -d "${PAYLOAD_DIR}/resources/gateway/node_modules" ]] || missing+=("opt/minimax-hub/resources/gateway/node_modules Linux-native modules")
 
   [[ -s "${STAGED_ROOT}/usr/share/applications/minimax-hub.desktop" ]] || missing+=("usr/share/applications/minimax-hub.desktop")
+  [[ -s "${INSTALLED_ICON}" ]] || missing+=("usr/share/icons/hicolor/256x256/apps/minimax-hub.png")
   [[ -x "${STAGED_ROOT}/usr/bin/minimax-hub" ]] || missing+=("usr/bin/minimax-hub executable")
+  [[ ! -e "${PAYLOAD_DIR}/resources/app-update.yml" ]] || missing+=("remove Linux-disabled updater metadata: opt/minimax-hub/resources/app-update.yml")
 
   if [[ ${#missing[@]} -gt 0 ]]; then
     printf 'Error: RPM payload is incomplete; refusing to build a bogus package.\n' >&2
@@ -69,6 +72,9 @@ validate_payload() {
     printf '%s\n' "${forbidden}" >&2
     die "Forbidden Windows artifacts remain in RPM payload: ${PAYLOAD_DIR}"
   fi
+
+  [[ ! -e "${PAYLOAD_DIR}/resources/app-update.yml" ]] || die "Linux RPM payload must not include upstream updater metadata: ${PAYLOAD_DIR}/resources/app-update.yml"
+  [[ ! -e "${PAYLOAD_DIR}/app-update.yml" ]] || die "Linux RPM payload must not include upstream updater metadata: ${PAYLOAD_DIR}/app-update.yml"
 }
 
 validate_rpm_toolchain() {

@@ -40,16 +40,18 @@ this source repository.
 test -d "%{staged_root}/opt/minimax-hub"
 test -s "%{staged_root}/usr/bin/minimax-hub"
 test -s "%{staged_root}/usr/share/applications/minimax-hub.desktop"
+test -s "%{staged_root}/usr/share/icons/hicolor/256x256/apps/minimax-hub.png"
 
 %build
 :
 
 %install
 rm -rf "%{buildroot}"
-mkdir -p "%{buildroot}/opt" "%{buildroot}/usr/bin" "%{buildroot}/usr/share/applications"
+mkdir -p "%{buildroot}/opt" "%{buildroot}/usr/bin" "%{buildroot}/usr/share/applications" "%{buildroot}/usr/share/icons/hicolor/256x256/apps"
 cp -a "%{staged_root}/opt/minimax-hub" "%{buildroot}/opt/"
 install -m 0755 "%{staged_root}/usr/bin/minimax-hub" "%{buildroot}/usr/bin/minimax-hub"
 install -m 0644 "%{staged_root}/usr/share/applications/minimax-hub.desktop" "%{buildroot}/usr/share/applications/minimax-hub.desktop"
+install -m 0644 "%{staged_root}/usr/share/icons/hicolor/256x256/apps/minimax-hub.png" "%{buildroot}/usr/share/icons/hicolor/256x256/apps/minimax-hub.png"
 chmod 0755 "%{buildroot}/opt/minimax-hub/electron" || :
 test ! -L "%{buildroot}/opt/minimax-hub/chrome-sandbox"
 test -f "%{buildroot}/opt/minimax-hub/chrome-sandbox"
@@ -95,3 +97,4 @@ fi
 %attr(4755,root,root) /opt/minimax-hub/chrome-sandbox
 /usr/bin/minimax-hub
 /usr/share/applications/minimax-hub.desktop
+/usr/share/icons/hicolor/256x256/apps/minimax-hub.png

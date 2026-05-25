@@ -6,6 +6,7 @@ source "$(dirname "${BASH_SOURCE[0]}")/scripts/common.sh"
 DEBIAN_ROOT="${PROJECT_ROOT}/linux-build"
 DEBIAN_CONTROL="${DEBIAN_ROOT}/DEBIAN/control"
 PAYLOAD_DIR="${DEFAULT_PAYLOAD_DIR}"
+INSTALLED_ICON="${DEBIAN_ROOT}/usr/share/icons/hicolor/256x256/apps/${PACKAGE_NAME}.png"
 OUTPUT_DIR="${PROJECT_ROOT}/output"
 ARCHITECTURE="amd64"
 VERSION="$(tr -d '[:space:]' < "${VERSION_FILE}")"
@@ -123,6 +124,11 @@ verify_no_forbidden_windows_artifacts() {
   fi
 }
 
+verify_no_linux_updater_metadata() {
+  [[ ! -e "${PAYLOAD_DIR}/resources/app-update.yml" ]] || die "Linux payload must not include upstream updater metadata: ${PAYLOAD_DIR}/resources/app-update.yml"
+  [[ ! -e "${PAYLOAD_DIR}/app-update.yml" ]] || die "Linux payload must not include upstream updater metadata: ${PAYLOAD_DIR}/app-update.yml"
+}
+
 validate_control_metadata() {
   require_file_present "${DEBIAN_CONTROL}" "Debian control file"
   grep -Fx "Package: ${PACKAGE_NAME}" "${DEBIAN_CONTROL}" >/dev/null || die "${DEBIAN_CONTROL} must declare Package: ${PACKAGE_NAME}"
@@ -148,9 +154,11 @@ validate_package_payload() {
   require_dir_present "${PAYLOAD_DIR}/resources/gateway/node_modules" "Gateway Linux-native node_modules"
   require_executable_present "${DEBIAN_ROOT}/usr/bin/${PACKAGE_NAME}" "Package launcher"
   require_file_present "${DEBIAN_ROOT}/usr/share/applications/${PACKAGE_NAME}.desktop" "Desktop entry"
+  require_file_present "${INSTALLED_ICON}" "Installed desktop icon"
   require_executable_present "${DEBIAN_ROOT}/DEBIAN/postinst" "postinst maintainer script"
   require_executable_present "${DEBIAN_ROOT}/DEBIAN/prerm" "prerm maintainer script"
   require_executable_present "${DEBIAN_ROOT}/DEBIAN/postrm" "postrm maintainer script"
+  [[ ! -e "${PAYLOAD_DIR}/resources/app-update.yml" ]] || record_missing "Remove Linux-disabled updater metadata: ${PAYLOAD_DIR}/resources/app-update.yml"
 
   if [[ ${#missing_items[@]} -gt 0 ]]; then
     printf '%s\n' 'Error: Cannot build Debian package; required payload files are missing or incomplete:' >&2
@@ -178,6 +186,7 @@ validate_control_metadata
 normalize_debian_package
 validate_package_payload
 verify_no_forbidden_windows_artifacts
+verify_no_linux_updater_metadata
 prepare_permissions
 require_command dpkg-deb
 build_deb
