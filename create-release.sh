@@ -64,6 +64,27 @@ echo
 info "Checking prerequisites..."
 
 # Check gh CLI
+GH_CMD=""
+if command -v gh &> /dev/null; then
+  GH_CMD="gh"
+elif command -v gh.exe &> /dev/null; then
+  GH_CMD="gh.exe"
+elif [[ -x "/mnt/c/Program Files/GitHub CLI/gh.exe" ]]; then
+  GH_CMD="/mnt/c/Program Files/GitHub CLI/gh.exe"
+elif [[ -x "/c/Program Files/GitHub CLI/gh.exe" ]]; then
+  GH_CMD="/c/Program Files/GitHub CLI/gh.exe"
+fi
+
+if [[ -z "${GH_CMD}" ]]; then
+  die "GitHub CLI (gh) is not found. Install from: https://cli.github.com/"
+fi
+
+info "Found GitHub CLI: ${GH_CMD}"
+
+# Check gh authentication
+if ! "${GH_CMD}" auth status &> /dev/null; then
+  die "GitHub CLI is not authenticated. Run: ${GH_CMD} auth login"
+fi
 if ! command -v gh &> /dev/null; then
   die "GitHub CLI (gh) is not installed. Install from: https://cli.github.com/"
 fi
@@ -162,7 +183,8 @@ echo
 info "Creating GitHub release ${TAG_VERSION}..."
 
 # Check if release already exists
-if gh release view "${TAG_VERSION}" &> /dev/null; then
+# Check if release already exists
+if "${GH_CMD}" release view "${TAG_VERSION}" &> /dev/null; then
   warn "Release ${TAG_VERSION} already exists."
   read -p "Upload files to existing release? [y/N] " -n 1 -r
   echo
@@ -173,7 +195,8 @@ if gh release view "${TAG_VERSION}" &> /dev/null; then
   RELEASE_EXISTS=true
 else
   # Create new release
-  gh release create "${TAG_VERSION}" \
+    --title "${TAG_VERSION}" \
+    --notes "MiniMax Hub Linux ${TAG_VERSION}\n\nUnofficial community Linux packaging for MiniMax Hub.\n\n## Install\n\n### Debian/Ubuntu\n\`\`\`bash\nsudo apt install ./minimax-hub_${VERSION}_amd64.deb\n\`\`\`\n\n### Fedora/RHEL/Rocky\n\n\`\`\`bash\nsudo dnf install ./minimax-hub-${VERSION}-1.x86_64.rpm\n\`\`\`\n\n## Notes\n\n- This is an unofficial community project, not affiliated with MiniMax\n- The MiniMax Hub application is proprietary software owned by MiniMax\n- See LICENSE and NOTICE files for details"
     --title "${TAG_VERSION}" \
     --notes "MiniMax Hub Linux ${TAG_VERSION}\n\nUnofficial community Linux packaging for MiniMax Hub.\n\n## Install\n\n### Debian/Ubuntu\n\`\`\`bash\nsudo apt install ./minimax-hub_${VERSION}_amd64.deb\n\`\`\`\n\n### Fedora/RHEL/Rocky\n\n\`\`\`bash\nsudo dnf install ./minimax-hub-${VERSION}-1.x86_64.rpm\n\`\`\`\n\n## Notes\n\n- This is an unofficial community project, not affiliated with MiniMax\n- The MiniMax Hub application is proprietary software owned by MiniMax\n- See LICENSE and NOTICE files for details"
   RELEASE_EXISTS=false
@@ -185,7 +208,7 @@ echo
 info "Uploading packages..."
 for file in "${BUILT_FILES[@]}"; do
   info "Uploading $(basename "${file}")..."
-  gh release upload "${TAG_VERSION}" "${file}" --clobber
+  "${GH_CMD}" release upload "${TAG_VERSION}" "${file}" --clobber
   success "Uploaded $(basename "${file}")"
 done
 
