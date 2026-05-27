@@ -148,6 +148,7 @@ copy_path_if_present "resources/opencode/plugins" "${resolved_source}" "${payloa
 copy_path_if_present "resources/plugins" "${resolved_source}" "${payload_dir}"
 copy_path_if_present "resources/icons" "${resolved_source}" "${payload_dir}"
 copy_path_if_present "resources/assets" "${resolved_source}" "${payload_dir}"
+copy_path_if_present "resources/app-resources" "${resolved_source}" "${payload_dir}"
 copy_path_if_present "resources/app-update.yml" "${resolved_source}" "${payload_dir}"
 copy_path_if_present "resources/electron.asar" "${resolved_source}" "${payload_dir}"
 copy_matching_top_level_files "${resolved_source}" "${payload_dir}"

@@ -169,6 +169,9 @@ find_desktop_icon_candidate() {
     "${source_payload}/resources/icons/256x256.png" \
     "${source_payload}/resources/assets/minimax-hub.png" \
     "${source_payload}/resources/assets/icon.png" \
+    "${source_payload}/resources/app-resources/minimax-hub.png" \
+    "${source_payload}/resources/app-resources/icon.png" \
+    "${source_payload}/resources/app-resources/tray.png" \
     "${source_payload}/resources/minimax-hub.png" \
     "${source_payload}/resources/icon.png" \
     "${source_payload}/minimax-hub.png" \
@@ -179,6 +182,7 @@ find_desktop_icon_candidate() {
   for search_dir in \
     "${source_payload}/resources/icons" \
     "${source_payload}/resources/assets" \
+    "${source_payload}/resources/app-resources" \
     "${source_payload}/resources"; do
     candidate="$(find_icon_candidate_in_dir "${search_dir}")"
     [[ -n "${candidate}" && -s "${candidate}" ]] && printf '%s\n' "${candidate}" && return 0
@@ -194,7 +198,7 @@ stage_desktop_icon() {
   if [[ -n "${icon_candidate}" ]]; then
     copy_file_to "${icon_candidate}" "${installed_icon}"
   else
-    log_action "MISSING: desktop icon candidate for ${installed_icon} (expected a PNG from source payload resources/icons, resources/assets, resources, or top level)"
+    log_action "MISSING: desktop icon candidate for ${installed_icon} (expected a PNG from source payload resources/icons, resources/assets, resources/app-resources, resources, or top level)"
   fi
 }
 
@@ -262,6 +266,7 @@ copy_app_resources() {
   copy_optional_dir "resources/plugins"
   copy_optional_dir "resources/icons"
   copy_optional_dir "resources/assets"
+  copy_optional_dir "resources/app-resources"
   copy_optional_file "resources/electron.asar"
   copy_top_level_resource_files
   stage_desktop_icon

@@ -128,7 +128,12 @@ inspection_report="${cache_dir}/inspection-report.txt"
   record_required_file "resources/gateway/dist/main.js"
   record_required_file "resources/mcp-tools/dist/main.js"
   record_required_dir "resources/opencode/config"
-  record_required_dir "resources/icons"
+    if [[ -d "${payload_dir}/resources/icons" || -d "${payload_dir}/resources/assets" || -d "${payload_dir}/resources/app-resources" ]]; then
+    echo "OK dir: icon resources"
+  else
+    echo "MISSING dir: resources/icons, resources/assets, or resources/app-resources"
+    missing+=("icon resources")
+  fi
 
   echo
   list_relative_matches "Icons" -type f \( -iname '*.png' -o -iname '*.ico' -o -iname '*.icns' -o -iname '*.svg' \)
