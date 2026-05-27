@@ -25,6 +25,7 @@ assert_no_crlf "${PROJECT_ROOT}/linux-build/usr/bin/minimax-hub"
 assert_no_crlf "${PROJECT_ROOT}/linux-build/usr/share/applications/minimax-hub.desktop"
 assert_no_crlf "${PROJECT_ROOT}/linux-build/DEBIAN/control"
 assert_no_crlf "${PROJECT_ROOT}/rpm/minimax-hub.spec"
+assert_file_contains "${PROJECT_ROOT}/linux-build/usr/bin/minimax-hub" "export ELECTRON_FORCE_IS_PACKAGED=true"
 if [[ -d "${payload_dir}/resources" ]]; then
   assert_no_crlf_in_tree "${payload_dir}/resources" -name '*.sh' -o -name '*.desktop' -o -name '*.json' -o -name '*.js'
 fi

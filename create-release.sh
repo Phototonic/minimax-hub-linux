@@ -8,9 +8,9 @@ set -euo pipefail
 #   bash create-release.sh [VERSION]
 #   bash create-release.sh --check
 #   bash create-release.sh --resume
-#   bash create-release.sh --publish [VERSION]
+#   bash create-release.sh --publish
 #
-# If VERSION is omitted, VERSION is read from the VERSION file.
+# If VERSION is omitted, it is detected from the installed MiniMax Hub source.
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "${SCRIPT_DIR}"
@@ -43,18 +43,7 @@ done
 if [[ $# -gt 1 ]]; then die "Expected at most one VERSION argument"; fi
 if [[ "${CHECK_ONLY}" -eq 1 && "${RESUME}" -eq 1 ]]; then die "--resume cannot be combined with --check"; fi
 
-if [[ $# -ge 1 ]]; then
-  VERSION="$1"
-else
-  VERSION="$(tr -d '[:space:]' < VERSION)"
-fi
-
-if [[ "${VERSION}" == v* ]]; then
-  TAG_VERSION="${VERSION}"
-  VERSION="${VERSION#v}"
-else
-  TAG_VERSION="v${VERSION}"
-fi
+REQUESTED_VERSION="${1:-}"
 
 if [[ -n "${MINIMAX_HUB_SOURCE:-}" ]]; then
   SOURCE_PATH="${MINIMAX_HUB_SOURCE}"
@@ -124,6 +113,145 @@ bash_path_from_windows() {
     printf '%s\n' "${path}"
   fi
 }
+
+normalize_release_version() {
+  local raw_version="$1"
+  raw_version="${raw_version#v}"
+  [[ "${raw_version}" =~ ^[0-9]+(\.[0-9]+){1,3}([.-][0-9A-Za-z][0-9A-Za-z.-]*)?$ ]] || die "Invalid MiniMax Hub version: ${raw_version}"
+  VERSION="${raw_version}"
+  TAG_VERSION="v${VERSION}"
+}
+
+source_path_for_local_read() {
+  local raw_path="$1"
+  local candidate drive rest lower_drive
+  if [[ -e "${raw_path}" ]]; then
+    printf '%s\n' "${raw_path}"
+    return 0
+  fi
+  if command -v cygpath >/dev/null 2>&1; then
+    candidate="$(cygpath -u "${raw_path}" 2>/dev/null || true)"
+    if [[ -n "${candidate}" && -e "${candidate}" ]]; then
+      printf '%s\n' "${candidate}"
+      return 0
+    fi
+  fi
+  candidate="$(bash_path_from_windows "${raw_path}")"
+  if [[ -e "${candidate}" ]]; then
+    printf '%s\n' "${candidate}"
+    return 0
+  fi
+  if [[ "${raw_path}" =~ ^([A-Za-z]):[\\/](.*)$ ]]; then
+    drive="${BASH_REMATCH[1]}"
+    rest="${BASH_REMATCH[2]//\\//}"
+    lower_drive="$(printf '%s' "${drive}" | tr '[:upper:]' '[:lower:]')"
+    for candidate in "/mnt/${lower_drive}/${rest}" "/${lower_drive}/${rest}" "/mnt/host/${lower_drive}/${rest}"; do
+      if [[ -e "${candidate}" ]]; then
+        printf '%s\n' "${candidate}"
+        return 0
+      fi
+    done
+  fi
+  printf '%s\n' "${raw_path}"
+}
+
+python_run() {
+  if command -v python3 >/dev/null 2>&1 && python3 -c 'import sys' >/dev/null 2>&1; then
+    python3 "$@"
+    return
+  fi
+  if command -v python >/dev/null 2>&1 && python -c 'import sys' >/dev/null 2>&1; then
+    python "$@"
+    return
+  fi
+  if command -v py >/dev/null 2>&1 && py -3 -c 'import sys' >/dev/null 2>&1; then
+    py -3 "$@"
+    return
+  fi
+  return 1
+}
+
+detect_installed_app_version() {
+  local source_root="$1"
+  local readable_source app_asar
+  readable_source="$(source_path_for_local_read "${source_root}")"
+  app_asar="${readable_source}/resources/app.asar"
+  [[ -e "${app_asar}" ]] || die "Cannot auto-detect MiniMax Hub version: ${app_asar} is missing. Pass an explicit version or set MINIMAX_HUB_SOURCE."
+  python_run - "${app_asar}" <<'PY' || die "Cannot auto-detect MiniMax Hub version from ${app_asar}. Pass an explicit version to override."
+import json
+import pathlib
+import struct
+import sys
+
+app_asar = pathlib.Path(sys.argv[1])
+
+def version_from_package_json(raw: bytes) -> str:
+    data = json.loads(raw.decode("utf-8"))
+    version = data.get("version")
+    if not isinstance(version, str) or not version.strip():
+        raise SystemExit("package.json does not contain a non-empty version")
+    return version.strip()
+
+if app_asar.is_dir():
+    print(version_from_package_json((app_asar / "package.json").read_bytes()))
+    raise SystemExit(0)
+
+with app_asar.open("rb") as handle:
+    header_prefix = handle.read(16)
+    if len(header_prefix) != 16:
+        raise SystemExit("app.asar header is too short")
+    _pickle_size, header_size, _header_size_without_padding, header_json_size = struct.unpack("<IIII", header_prefix)
+    header_raw = handle.read(header_json_size)
+    header = json.loads(header_raw.decode("utf-8"))
+    package_entry = header.get("files", {}).get("package.json")
+    if not isinstance(package_entry, dict):
+        raise SystemExit("app.asar does not contain package.json")
+    size = int(package_entry["size"])
+    offset = int(package_entry.get("offset", "0"))
+    data_base = 8 + header_size
+    handle.seek(data_base + offset)
+    print(version_from_package_json(handle.read(size)))
+PY
+}
+
+sync_release_version_metadata() {
+  printf '%s\n' "${VERSION}" > VERSION
+  local temp_manifest
+  temp_manifest="$(mktemp "package-manifest.json.tmp.XXXXXX")"
+  python_run - "package-manifest.json" "${temp_manifest}" "${VERSION}" <<'PY' || die "Cannot update package-manifest.json: python3, python, or py -3 is required."
+import json
+import sys
+
+source, target, version = sys.argv[1:]
+with open(source, "r", encoding="utf-8") as handle:
+    data = json.load(handle)
+data["appVersion"] = version
+data["miniMaxHubVersion"] = version
+with open(target, "w", encoding="utf-8") as handle:
+    json.dump(data, handle, indent=2)
+    handle.write("\n")
+PY
+  mv "${temp_manifest}" package-manifest.json
+}
+
+if [[ -n "${REQUESTED_VERSION}" ]]; then
+  normalize_release_version "${REQUESTED_VERSION}"
+else
+  [[ -n "${SOURCE_PATH}" ]] || die "MiniMax Hub source path is not set. Set MINIMAX_HUB_SOURCE to the installed MiniMax Hub directory, or pass an explicit version."
+  DETECTED_VERSION="$(detect_installed_app_version "${SOURCE_PATH}")" || exit 1
+  normalize_release_version "${DETECTED_VERSION}"
+fi
+
+if [[ "${CHECK_ONLY}" -ne 1 && "${MINIMAX_HUB_RELEASE_NO_SYNC:-0}" != "1" ]]; then
+  sync_release_version_metadata
+fi
+
+if [[ "${MINIMAX_HUB_RELEASE_VERSION_ONLY:-0}" == "1" ]]; then
+  info "Version: ${VERSION}"
+  info "Tag: ${TAG_VERSION}"
+  info "Source: ${SOURCE_PATH}"
+  exit 0
+fi
 
 assert_docker_mount_works() {
   MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL="*" "${DOCKER_CMD}" run --rm --mount "type=bind,source=${HOST_WORKDIR},target=/work" -w /work alpine:3.20 test -f VERSION >/dev/null
@@ -256,7 +384,7 @@ echo
 
 if [[ "${PUBLISH}" -ne 1 ]]; then
   success "Package build complete. Built files are in output/."
-  info "Run 'bash create-release.sh --publish ${VERSION}' to rebuild and upload artifacts to ${TAG_VERSION}."
+  info "Run 'bash create-release.sh --publish' to rebuild and upload artifacts to ${TAG_VERSION}."
   exit 0
 fi
 

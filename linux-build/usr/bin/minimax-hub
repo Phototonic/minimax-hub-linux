@@ -10,6 +10,7 @@ if [[ ! -x "${ELECTRON_BIN}" ]]; then
 fi
 
 export PATH="${APP_DIR}/node/bin:${APP_DIR}/resources/ffmpeg:${PATH}"
+export ELECTRON_FORCE_IS_PACKAGED=true
 export FFMPEG_PATH="${APP_DIR}/resources/ffmpeg/ffmpeg"
 export FFPROBE_PATH="${APP_DIR}/resources/ffmpeg/ffprobe"
 export OPENCODE_CONFIG_DIR="${APP_DIR}/resources/opencode/config"

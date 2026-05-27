@@ -1,9 +1,9 @@
 {
   "packageName": "minimax-hub",
   "projectName": "minimax-hub-linux",
-  "appVersion": "0.1.45",
+  "appVersion": "0.1.46",
   "versionSource": "VERSION",
-  "miniMaxHubVersion": "0.1.45",
+  "miniMaxHubVersion": "0.1.46",
   "openCodeVersion": "1.15.10",
   "packageRevision": "1",
   "architecture": {

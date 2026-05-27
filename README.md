@@ -78,7 +78,7 @@ Maintainers with release access can explicitly publish after a successful build:
 bash create-release.sh --publish
 ```
 
-`--publish` is the only mode that requires GitHub CLI authentication or uploads artifacts to GitHub Releases. On Windows Git Bash, `create-release.sh` defaults to `%LOCALAPPDATA%\Programs\MiniMax Hub` when `MINIMAX_HUB_SOURCE` is not set.
+`--publish` is the only mode that requires GitHub CLI authentication or uploads artifacts to GitHub Releases. It auto-detects the MiniMax Hub version from the installed app when no explicit version is supplied. On Windows Git Bash, `create-release.sh` defaults to `%LOCALAPPDATA%\Programs\MiniMax Hub` when `MINIMAX_HUB_SOURCE` is not set.
 
 For detailed build, verification, and troubleshooting steps, see [`INSTALL.md`](INSTALL.md), [`CONTRIBUTING.md`](CONTRIBUTING.md), and [`LICENSES.md`](LICENSES.md).
 

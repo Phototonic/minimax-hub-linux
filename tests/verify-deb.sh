@@ -39,6 +39,7 @@ fi
 tmp_dir="$(mktemp -d)"
 trap 'rm -rf "${tmp_dir}"' EXIT
 dpkg-deb --extract "${deb_path}" "${tmp_dir}/root"
+assert_file_contains "${tmp_dir}/root/usr/bin/minimax-hub" "export ELECTRON_FORCE_IS_PACKAGED=true"
 validate_desktop_file "${tmp_dir}/root/usr/share/applications/minimax-hub.desktop"
 require_file "${tmp_dir}/root/usr/share/icons/hicolor/256x256/apps/minimax-hub.png"
 assert_no_forbidden_windows_artifacts "${tmp_dir}/root/opt/minimax-hub"

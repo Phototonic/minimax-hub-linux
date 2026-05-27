@@ -46,6 +46,7 @@ if command -v rpm2cpio >/dev/null 2>&1 && command -v cpio >/dev/null 2>&1; then
   tmp_dir="$(mktemp -d)"
   trap 'rm -rf "${tmp_dir}"' EXIT
   (cd "${tmp_dir}" && rpm2cpio "${rpm_path}" | cpio -idm --quiet)
+  assert_file_contains "${tmp_dir}/usr/bin/minimax-hub" "export ELECTRON_FORCE_IS_PACKAGED=true"
   validate_desktop_file "${tmp_dir}/usr/share/applications/minimax-hub.desktop"
   require_file "${tmp_dir}/usr/share/icons/hicolor/256x256/apps/minimax-hub.png"
   assert_no_forbidden_windows_artifacts "${tmp_dir}/opt/minimax-hub"
@@ -54,6 +55,7 @@ elif command -v bsdtar >/dev/null 2>&1; then
   tmp_dir="$(mktemp -d)"
   trap 'rm -rf "${tmp_dir}"' EXIT
   bsdtar -xf "${rpm_path}" -C "${tmp_dir}"
+  assert_file_contains "${tmp_dir}/usr/bin/minimax-hub" "export ELECTRON_FORCE_IS_PACKAGED=true"
   validate_desktop_file "${tmp_dir}/usr/share/applications/minimax-hub.desktop"
   require_file "${tmp_dir}/usr/share/icons/hicolor/256x256/apps/minimax-hub.png"
   assert_no_forbidden_windows_artifacts "${tmp_dir}/opt/minimax-hub"
