@@ -305,6 +305,7 @@ run_pipeline_container() {
       bash scripts/assemble-linux-payload.sh --no-normalize
       bash scripts/rebuild-native-modules.sh
       MINIMAX_HUB_SKIP_PAYLOAD_REPORTS=1 bash scripts/assemble-linux-payload.sh
+      bash tests/verify-assemble-gateway-modules.sh
       bash tests/verify-payload.sh linux-build/opt/minimax-hub
       MINIMAX_HUB_SKIP_PAYLOAD_NORMALIZE=1 bash build.sh
     '

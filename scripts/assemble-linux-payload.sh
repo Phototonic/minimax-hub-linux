@@ -118,6 +118,33 @@ copy_optional_dir() {
   copy_dir_to "${source_dir}" "${target_dir}" "$@"
 }
 
+copy_missing_gateway_node_modules() {
+  local source_modules="${source_payload}/resources/gateway/node_modules"
+  local target_modules="${payload_dir}/resources/gateway/node_modules"
+  local entry entry_name scoped_entry scoped_name
+
+  [[ -d "${source_modules}" && -d "${target_modules}" ]] || return 0
+
+  while IFS= read -r -d '' entry; do
+    entry_name="$(basename "${entry}")"
+    if [[ "${entry_name}" == @* && -d "${entry}" ]]; then
+      ensure_dir "${target_modules}/${entry_name}"
+      while IFS= read -r -d '' scoped_entry; do
+        scoped_name="$(basename "${scoped_entry}")"
+        if [[ ! -e "${target_modules}/${entry_name}/${scoped_name}" ]]; then
+          copy_dir_to "${scoped_entry}" "${target_modules}/${entry_name}/${scoped_name}"
+        fi
+      done < <(find "${entry}" -mindepth 1 -maxdepth 1 -type d -print0 | LC_ALL=C sort -z)
+    elif [[ ! -e "${target_modules}/${entry_name}" ]]; then
+      if [[ -d "${entry}" ]]; then
+        copy_dir_to "${entry}" "${target_modules}/${entry_name}"
+      elif [[ -f "${entry}" ]]; then
+        copy_file_to "${entry}" "${target_modules}/${entry_name}"
+      fi
+    fi
+  done < <(find "${source_modules}" -mindepth 1 -maxdepth 1 -print0 | LC_ALL=C sort -z)
+}
+
 copy_runtime_file_from_tree() {
   local relative="$1"
   [[ -n "${runtime_dir}" ]] || return 0
@@ -260,6 +287,7 @@ copy_app_resources() {
     log_action "Preserve existing Linux gateway node_modules at ${payload_dir}/resources/gateway/node_modules"
   fi
   copy_optional_dir "resources/gateway" "${gateway_excludes[@]}"
+  copy_missing_gateway_node_modules
   copy_optional_dir "resources/mcp-tools"
   copy_optional_dir "resources/opencode/config"
   copy_optional_dir "resources/opencode/plugins"
