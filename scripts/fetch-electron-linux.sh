@@ -44,8 +44,8 @@ archive_name="electron-v${version}-linux-x64.zip"
 runtime_cache="${cache_dir}/electron/${version}"
 archive_path="${archive:-${runtime_cache}/${archive_name}}"
 download_url="${url:-https://github.com/electron/electron/releases/download/v${version}/${archive_name}}"
-shasums_url="https://github.com/electron/electron/releases/download/v${version}/SHASUMS512.txt"
-shasums_path="${runtime_cache}/SHASUMS512.txt"
+shasums_url="https://github.com/electron/electron/releases/download/v${version}/SHASUMS256.txt"
+shasums_path="${runtime_cache}/SHASUMS256.txt"
 
 if [[ "$dry_run" -eq 1 ]]; then
   echo "Would fetch Electron ${version} from ${download_url}"
@@ -62,7 +62,7 @@ else
 fi
 require_nonempty_file "$archive_path"
 download_file "$shasums_url" "$shasums_path"
-checksum="$(verify_checksum_from_sums "$shasums_path" "$archive_name" "$archive_path" sha512)"
+checksum="$(verify_checksum_from_sums "$shasums_path" "$archive_name" "$archive_path" sha256)"
 
 tmp_extract="$(mktemp -d "${runtime_cache}/extract.XXXXXX")"
 trap 'rm -rf "$tmp_extract"' EXIT

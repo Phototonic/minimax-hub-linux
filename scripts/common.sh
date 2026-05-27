@@ -208,6 +208,10 @@ download_file() {
   local url="$1"
   local output="$2"
   ensure_dir "$(dirname "$output")"
+  if [[ -s "$output" ]]; then
+    info "Using cached download: ${output}"
+    return 0
+  fi
   if command -v curl >/dev/null 2>&1; then
     curl -fL --retry 3 --retry-delay 2 -o "$output" "$url"
   elif command -v wget >/dev/null 2>&1; then
@@ -236,7 +240,7 @@ verify_checksum_from_sums() {
   local archive_path="$3"
   local algorithm="$4"
   local expected
-  expected="$(awk -v name="$archive_name" '$2 == name || $2 == "./" name { print $1; found=1; exit } END { if (!found) exit 1 }' "$sums_file")" \
+  expected="$(awk -v name="$archive_name" '{ file=$2; sub(/^\*/, "", file) } file == name || file == "./" name { print $1; found=1; exit } END { if (!found) exit 1 }' "$sums_file")" \
     || die "Checksum entry not found for ${archive_name} in ${sums_file}"
   verify_checksum "$expected" "$archive_path" "$algorithm"
   echo "$expected"
