@@ -18,9 +18,9 @@ When docs change, check that they match these current facts:
 | Item | Current value |
 | --- | --- |
 | Package | `minimax-hub` |
-| Version | `0.1.44` from `VERSION` |
-| Debian artifact | `output/minimax-hub_0.1.44_amd64.deb` |
-| RPM artifact | `output/minimax-hub-0.1.44-1.x86_64.rpm` |
+| Version | `0.1.45` from `VERSION` |
+| Debian artifact | `output/minimax-hub_0.1.45_amd64.deb` |
+| RPM artifact | `output/minimax-hub-0.1.45-1.x86_64.rpm` |
 | Payload root | `linux-build/opt/minimax-hub` |
 | Windows source cache | `.cache/windows-payload/payload` |
 | Runtime cache | `.cache/runtimes` |
@@ -39,6 +39,8 @@ bash scripts/rebuild-native-modules.sh
 bash scripts/assemble-linux-payload.sh
 bash build.sh
 bash build-rpm.sh
+bash create-release.sh
+bash create-release.sh --publish
 ```
 
 ## Local Verification
@@ -46,7 +48,7 @@ bash build-rpm.sh
 For documentation-only changes, run a safe syntax check on documented shell scripts when possible:
 
 ```bash
-bash -n scripts/*.sh build.sh build-rpm.sh linux-build/DEBIAN/postinst linux-build/DEBIAN/prerm linux-build/DEBIAN/postrm tests/*.sh
+bash -n create-release.sh scripts/*.sh build.sh build-rpm.sh linux-build/DEBIAN/postinst linux-build/DEBIAN/prerm linux-build/DEBIAN/postrm tests/*.sh
 ```
 
 For script or packaging changes, run the relevant checks from this matrix:
@@ -60,9 +62,9 @@ bash tests/smoke-mcp.sh
 bash tests/smoke-gateway.sh
 bash tests/verify-desktop.sh
 bash build.sh
-bash tests/verify-deb.sh output/minimax-hub_0.1.44_amd64.deb
+bash tests/verify-deb.sh output/minimax-hub_0.1.45_amd64.deb
 bash build-rpm.sh
-bash tests/verify-rpm.sh output/minimax-hub-0.1.44-1.x86_64.rpm
+bash tests/verify-rpm.sh output/minimax-hub-0.1.45-1.x86_64.rpm
 ```
 
 Do not run install commands on a shared machine unless you intend to install the local package. Install tests should use disposable VMs or containers where possible.
@@ -76,20 +78,20 @@ Before publishing a release artifact, verify each item:
 3. Proprietary MiniMax payloads, runtime archives, generated reports, generated icons, and package artifacts are not committed.
 4. Electron, Node, OpenCode, FFmpeg, and FFprobe were fetched from documented sources or staged from local files with recorded checksums.
 5. Native modules were rebuilt for Linux x64 glibc and verified with the packaged Node runtime.
-6. `bash -n scripts/*.sh build.sh build-rpm.sh linux-build/DEBIAN/postinst linux-build/DEBIAN/prerm linux-build/DEBIAN/postrm tests/*.sh` passes.
+6. `bash -n create-release.sh scripts/*.sh build.sh build-rpm.sh linux-build/DEBIAN/postinst linux-build/DEBIAN/prerm linux-build/DEBIAN/postrm tests/*.sh` passes.
 7. `bash tests/verify-payload.sh` passes after assembly.
 8. Runtime, OpenCode, native module, MCP, gateway, and desktop smoke tests pass on the release build host.
-9. `bash build.sh` creates `output/minimax-hub_0.1.44_amd64.deb` and runs `tests/verify-deb.sh` successfully.
-10. `bash build-rpm.sh` creates `output/minimax-hub-0.1.44-1.x86_64.rpm` and runs `tests/verify-rpm.sh` successfully when `rpm` is available.
+9. `bash create-release.sh` builds `output/minimax-hub_0.1.45_amd64.deb` and `output/minimax-hub-0.1.45-1.x86_64.rpm` locally without publishing.
+10. If testing lower-level scripts directly, `bash build.sh` and `bash build-rpm.sh` create and verify the same artifacts.
 11. Install the `.deb` on a Debian or Ubuntu test system and launch `minimax-hub`.
 12. Install the `.rpm` on a Fedora, RHEL, Rocky, or compatible RPM test system and launch `minimax-hub`.
 13. Confirm desktop entry registration, installed hicolor icon packaging, protocol handler metadata, `chrome-sandbox` mode, gateway startup, MCP startup, OpenCode startup, and FFmpeg execution.
 14. Confirm final payloads and packages do not contain `resources/app-update.yml` or top-level `app-update.yml`; updater metadata may remain only in local source/extraction caches.
-15. Manually dispatch payload-backed build and release workflows only after entering the required license and provenance acknowledgement string; payload-backed build workflows may instead use repository variable MINIMAX_HUB_LICENSE_ACKNOWLEDGEMENT set to the exact build acknowledgement string.
+15. Publish only by running `bash create-release.sh --publish` locally from a maintainer machine with release access; the default `bash create-release.sh` mode must remain build-only.
 16. Record known risks, unsupported distros, and any runtime source substitutions in release notes.
 
 ## Release Artifact Policy
 
-Release artifacts must be built from the local staged inputs for that release. GitHub workflow publication is manual-only for payload-bearing `.deb` and `.rpm` files and requires the explicit license and provenance acknowledgement input for releases, and build workflows require either that input or MINIMAX_HUB_LICENSE_ACKNOWLEDGEMENT before payload-backed jobs run. Do not publish private download URLs, fake checksums, or claims that proprietary MiniMax payloads are covered by this repository license.
+Release artifacts must be built from the local staged inputs for that release. GitHub Actions does not build or publish payload-bearing `.deb` and `.rpm` files; maintainers publish release assets explicitly with `bash create-release.sh --publish`. Do not publish private download URLs, fake checksums, or claims that proprietary MiniMax payloads are covered by this repository license.
 
 If a release includes generated `.deb` or `.rpm` files outside git, the release notes must state that the package is an unofficial community build, identify the source of each Linux runtime component at a high level, and tell users that MiniMax proprietary components remain subject to upstream MiniMax terms.

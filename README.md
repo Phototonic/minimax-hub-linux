@@ -12,9 +12,9 @@ Current package metadata:
 | --- | --- |
 | Package name | `minimax-hub` |
 | Version source | `VERSION` |
-| Current version | `0.1.44` |
-| Debian artifact | `output/minimax-hub_0.1.44_amd64.deb` |
-| RPM artifact | `output/minimax-hub-0.1.44-1.x86_64.rpm` |
+| Current version | `0.1.45` |
+| Debian artifact | `output/minimax-hub_0.1.45_amd64.deb` |
+| RPM artifact | `output/minimax-hub-0.1.45-1.x86_64.rpm` |
 | Install prefix | `/opt/minimax-hub` |
 | Launcher | `/usr/bin/minimax-hub` |
 | Desktop file | `/usr/share/applications/minimax-hub.desktop` |
@@ -33,12 +33,59 @@ The scripts are written for Linux, WSL, or Git Bash style shells with Bash avail
 
 Use `rpm/DEPENDENCIES.md` for package name mappings. The RPM spec is the authoritative Fedora, RHEL, and Rocky packaging target. openSUSE mappings are dependency guidance for testing, not a separate package spec.
 
-## Build Flow
+## Install From a Release
+
+Most users should install the prebuilt package attached to a GitHub Release. Download the `.deb` or `.rpm` asset for your distro family, then run one of these commands from the download directory.
+
+Debian or Ubuntu:
+
+```bash
+sudo apt install ./minimax-hub_0.1.45_amd64.deb
+```
+
+Fedora, RHEL, or Rocky:
+
+```bash
+sudo dnf install ./minimax-hub-0.1.45-1.x86_64.rpm
+```
+
+openSUSE:
+
+```bash
+sudo zypper install ./minimax-hub-0.1.45-1.x86_64.rpm
+```
+
+After install, start the app from the desktop menu or run:
+
+```bash
+minimax-hub
+```
+
+## Maintainer Build Flow
+
+Release packages are built locally because they require a MiniMax Hub installation supplied by the builder. The helper script builds packages only by default:
+
+```bash
+export MINIMAX_HUB_SOURCE="/path/to/MiniMax Hub"
+bash create-release.sh
+```
+
+Maintainers with release access can explicitly publish after a successful build:
+
+```bash
+bash create-release.sh --publish
+```
+
+`--publish` is the only mode that requires GitHub CLI authentication or uploads artifacts to GitHub Releases. Fork maintainers can use the same script against their own repository credentials.
+
+On Windows Git Bash, `create-release.sh` defaults to `%LOCALAPPDATA%\Programs\MiniMax Hub` when `MINIMAX_HUB_SOURCE` is not set. On other hosts, set `MINIMAX_HUB_SOURCE` explicitly.
+
+## Manual Build Flow
 
 Run commands from the repository root.
 
 ```bash
-bash -n scripts/*.sh build.sh build-rpm.sh linux-build/DEBIAN/postinst linux-build/DEBIAN/prerm linux-build/DEBIAN/postrm tests/*.sh
+bash -n create-release.sh scripts/*.sh build.sh build-rpm.sh linux-build/DEBIAN/postinst linux-build/DEBIAN/prerm linux-build/DEBIAN/postrm tests/*.sh
 bash scripts/extract-windows-payload.sh --source "/path/to/MiniMax Hub"
 bash scripts/inspect-payload.sh
 bash scripts/fetch-electron-linux.sh --version VERSION
@@ -60,40 +107,7 @@ bash build-rpm.sh
 
 `VERSION` in the Electron fetch command must match the Electron Linux runtime needed by the staged app. If `package-manifest.json` already contains `runtimePlaceholders.electronVersion`, you may omit `--version`.
 
-`bash build.sh` creates `output/minimax-hub_0.1.44_amd64.deb` and runs `tests/verify-deb.sh` on that artifact. `bash build-rpm.sh` creates `output/minimax-hub-0.1.44-1.x86_64.rpm` and runs `tests/verify-rpm.sh` when the `rpm` command is available.
-
-## Install Locally
-
-Debian or Ubuntu:
-
-```bash
-sudo apt install ./output/minimax-hub_0.1.44_amd64.deb
-```
-
-If you prefer `dpkg`:
-
-```bash
-sudo dpkg -i output/minimax-hub_0.1.44_amd64.deb
-sudo apt -f install
-```
-
-Fedora, RHEL, or Rocky:
-
-```bash
-sudo dnf install ./output/minimax-hub-0.1.44-1.x86_64.rpm
-```
-
-openSUSE:
-
-```bash
-sudo zypper install ./output/minimax-hub-0.1.44-1.x86_64.rpm
-```
-
-After install, start the app from the desktop menu or run:
-
-```bash
-minimax-hub
-```
+`bash build.sh` creates `output/minimax-hub_0.1.45_amd64.deb` and runs `tests/verify-deb.sh` on that artifact. `bash build-rpm.sh` creates `output/minimax-hub-0.1.45-1.x86_64.rpm` and runs `tests/verify-rpm.sh` when the `rpm` command is available.
 
 ## Artifact Source Policy
 

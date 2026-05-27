@@ -82,19 +82,19 @@ Requires(postun): desktop-file-utils
 Debian or Ubuntu:
 
 ```bash
-sudo apt install ./output/minimax-hub_0.1.44_amd64.deb
+sudo apt install ./output/minimax-hub_0.1.45_amd64.deb
 ```
 
 Fedora, RHEL, or Rocky:
 
 ```bash
-sudo dnf install ./output/minimax-hub-0.1.44-1.x86_64.rpm
+sudo dnf install ./output/minimax-hub-0.1.45-1.x86_64.rpm
 ```
 
 openSUSE:
 
 ```bash
-sudo zypper install ./output/minimax-hub-0.1.44-1.x86_64.rpm
+sudo zypper install ./output/minimax-hub-0.1.45-1.x86_64.rpm
 ```
 
 ## Dependency Verification
@@ -102,18 +102,18 @@ sudo zypper install ./output/minimax-hub-0.1.44-1.x86_64.rpm
 Debian artifact metadata:
 
 ```bash
-dpkg-deb --info output/minimax-hub_0.1.44_amd64.deb
-dpkg-deb --contents output/minimax-hub_0.1.44_amd64.deb
-bash tests/verify-deb.sh output/minimax-hub_0.1.44_amd64.deb
+dpkg-deb --info output/minimax-hub_0.1.45_amd64.deb
+dpkg-deb --contents output/minimax-hub_0.1.45_amd64.deb
+bash tests/verify-deb.sh output/minimax-hub_0.1.45_amd64.deb
 ```
 
 RPM artifact metadata:
 
 ```bash
-rpm -qpi output/minimax-hub-0.1.44-1.x86_64.rpm
-rpm -qpl output/minimax-hub-0.1.44-1.x86_64.rpm
-rpm -qp --requires output/minimax-hub-0.1.44-1.x86_64.rpm
-bash tests/verify-rpm.sh output/minimax-hub-0.1.44-1.x86_64.rpm
+rpm -qpi output/minimax-hub-0.1.45-1.x86_64.rpm
+rpm -qpl output/minimax-hub-0.1.45-1.x86_64.rpm
+rpm -qp --requires output/minimax-hub-0.1.45-1.x86_64.rpm
+bash tests/verify-rpm.sh output/minimax-hub-0.1.45-1.x86_64.rpm
 ```
 
 `tests/verify-rpm.sh` checks for `gtk3`, `nss`, and `desktop-file-utils` in RPM requirements, confirms desktop and icon cache scriptlets, validates `chrome-sandbox`, requires `/usr/share/icons/hicolor/256x256/apps/minimax-hub.png`, rejects packaged `resources/app-update.yml`, and inspects the extracted payload when `rpm2cpio` plus `cpio` or `bsdtar` is available.

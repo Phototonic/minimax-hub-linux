@@ -47,13 +47,13 @@ A release builder may use local source inputs to produce packages, but those inp
 .cache/runtimes
 .cache/assembly
 linux-build/opt/minimax-hub runtime payload after assembly
-output/minimax-hub_0.1.44_amd64.deb
-output/minimax-hub-0.1.44-1.x86_64.rpm
+output/minimax-hub_0.1.45_amd64.deb
+output/minimax-hub-0.1.45-1.x86_64.rpm
 ```
 
 The scripts reject common Windows runtime artifacts in Linux payloads, including `.exe`, `.dll`, `.bat`, `.cmd`, and directories whose names identify Windows-specific module builds. They also remove and reject Linux-disabled updater metadata such as `resources/app-update.yml` or top-level `app-update.yml` from final payloads and packages. Do not bypass those checks.
 
-Publishing generated payload-bearing packages from CI or release workflows requires a manual dispatch with the explicit license and provenance acknowledgement input; payload-backed build jobs require either that input or repository variable MINIMAX_HUB_LICENSE_ACKNOWLEDGEMENT. Automatic workflow-run publication is intentionally disabled because generated `.deb` and `.rpm` files can contain proprietary MiniMax payloads.
+Publishing generated payload-bearing packages is a maintainer-local action. GitHub Actions does not build or publish payload-bearing `.deb` and `.rpm` files; maintainers must run `bash create-release.sh --publish` explicitly after verifying the local build and release provenance. Automatic workflow-run publication is intentionally disabled because generated packages can contain proprietary MiniMax payloads.
 
 ## Release Notes Requirements
 

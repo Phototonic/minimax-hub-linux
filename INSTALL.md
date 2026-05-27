@@ -4,6 +4,49 @@ This guide covers local build, test, and install steps for the unofficial MiniMa
 
 Run all commands from the repository root.
 
+## Install From GitHub Releases
+
+Most users do not need to build this repository. Download the release asset for your distro family from GitHub Releases, then install it locally.
+
+Debian or Ubuntu:
+
+```bash
+sudo apt install ./minimax-hub_0.1.45_amd64.deb
+```
+
+Fedora, RHEL, or Rocky:
+
+```bash
+sudo dnf install ./minimax-hub-0.1.45-1.x86_64.rpm
+```
+
+openSUSE:
+
+```bash
+sudo zypper install ./minimax-hub-0.1.45-1.x86_64.rpm
+```
+
+After install, start the app from the desktop menu or run `minimax-hub`.
+
+## Maintainer Release Build
+
+Release packages are built locally from a MiniMax Hub installation supplied by the builder. The Docker helper builds both package formats by default and does not interact with GitHub unless `--publish` is passed.
+
+```bash
+export MINIMAX_HUB_SOURCE="/path/to/MiniMax Hub"
+bash create-release.sh
+```
+
+Maintainers with release access can publish the resulting `.deb` and `.rpm` assets to GitHub Releases explicitly:
+
+```bash
+bash create-release.sh --publish
+```
+
+Use `bash create-release.sh --check` to verify Docker and source mount prerequisites without building packages. Use `bash create-release.sh --publish --check` when you also want to verify GitHub CLI publishing access. Use `bash create-release.sh --resume` to reuse staged downloads and payloads during local release iteration.
+
+On Windows Git Bash, `create-release.sh` defaults to `%LOCALAPPDATA%\Programs\MiniMax Hub` when `MINIMAX_HUB_SOURCE` is not set. On other hosts, set `MINIMAX_HUB_SOURCE` explicitly.
+
 ## Build Prerequisites
 
 Required for all build hosts:
@@ -45,7 +88,7 @@ Native module builds may also need compiler, Python, make, and SQLite developmen
 Before building, check every maintained shell entry point:
 
 ```bash
-bash -n scripts/*.sh build.sh build-rpm.sh linux-build/DEBIAN/postinst linux-build/DEBIAN/prerm linux-build/DEBIAN/postrm tests/*.sh
+bash -n create-release.sh scripts/*.sh build.sh build-rpm.sh linux-build/DEBIAN/postinst linux-build/DEBIAN/prerm linux-build/DEBIAN/postrm tests/*.sh
 ```
 
 ## Source Payload Extraction
@@ -56,7 +99,7 @@ Stage application resources from a local MiniMax Hub install root:
 bash scripts/extract-windows-payload.sh --source "/path/to/MiniMax Hub"
 ```
 
-If `package-manifest.json` has a reachable `sourceInstallPath`, you can use the default:
+If your local, uncommitted `package-manifest.json` has a reachable `sourceInstallPath`, you can use the default:
 
 ```bash
 bash scripts/extract-windows-payload.sh
@@ -178,7 +221,7 @@ Run the checks that match your stage of work:
 
 | Stage | Command |
 | --- | --- |
-| Shell syntax | `bash -n scripts/*.sh build.sh build-rpm.sh linux-build/DEBIAN/postinst linux-build/DEBIAN/prerm linux-build/DEBIAN/postrm tests/*.sh` |
+| Shell syntax | `bash -n create-release.sh scripts/*.sh build.sh build-rpm.sh linux-build/DEBIAN/postinst linux-build/DEBIAN/prerm linux-build/DEBIAN/postrm tests/*.sh` |
 | Payload structure | `bash tests/verify-payload.sh` |
 | Runtime versions | `bash scripts/smoke-runtime.sh` |
 | OpenCode binary | `bash tests/smoke-opencode.sh` |
@@ -186,8 +229,8 @@ Run the checks that match your stage of work:
 | MCP tools | `bash tests/smoke-mcp.sh` |
 | Gateway service | `bash tests/smoke-gateway.sh` |
 | Desktop entry | `bash tests/verify-desktop.sh` |
-| Debian artifact | `bash tests/verify-deb.sh output/minimax-hub_0.1.44_amd64.deb` |
-| RPM artifact | `bash tests/verify-rpm.sh output/minimax-hub-0.1.44-1.x86_64.rpm` |
+| Debian artifact | `bash tests/verify-deb.sh output/minimax-hub_0.1.45_amd64.deb` |
+| RPM artifact | `bash tests/verify-rpm.sh output/minimax-hub-0.1.45-1.x86_64.rpm` |
 
 `tests/smoke-gateway.sh` starts the packaged gateway with bundled Node and probes `http://127.0.0.1:8001/health` and `/`. `tests/smoke-mcp.sh` starts MCP tools with bundled Node and accepts either a clean help exit or a timeout after startup. `tests/verify-desktop.sh` requires protocol handler metadata in the desktop file and the installed hicolor icon at `linux-build/usr/share/icons/hicolor/256x256/apps/minimax-hub.png`.
 
@@ -202,7 +245,7 @@ bash build.sh
 Expected artifact:
 
 ```text
-output/minimax-hub_0.1.44_amd64.deb
+output/minimax-hub_0.1.45_amd64.deb
 ```
 
 RPM package:
@@ -214,38 +257,38 @@ bash build-rpm.sh
 Expected artifact:
 
 ```text
-output/minimax-hub-0.1.44-1.x86_64.rpm
+output/minimax-hub-0.1.45-1.x86_64.rpm
 ```
 
 `build.sh` validates Debian metadata, normalizes the package tree, checks required payload files and the installed icon, rejects forbidden Windows artifacts and disabled updater metadata, builds with `dpkg-deb --root-owner-group`, and runs `tests/verify-deb.sh`.
 
-`build-rpm.sh` validates the payload and installed icon before invoking RPM tools, rejects disabled updater metadata, requires `rpmbuild`, builds from `rpm/minimax-hub.spec`, copies the first `minimax-hub-0.1.44-1*.x86_64.rpm` match to `output/minimax-hub-0.1.44-1.x86_64.rpm`, and runs `tests/verify-rpm.sh` when `rpm` is installed.
+`build-rpm.sh` validates the payload and installed icon before invoking RPM tools, rejects disabled updater metadata, requires `rpmbuild`, builds from `rpm/minimax-hub.spec`, copies the first `minimax-hub-0.1.45-1*.x86_64.rpm` match to `output/minimax-hub-0.1.45-1.x86_64.rpm`, and runs `tests/verify-rpm.sh` when `rpm` is installed.
 
 ## Install Packages
 
 Debian or Ubuntu:
 
 ```bash
-sudo apt install ./output/minimax-hub_0.1.44_amd64.deb
+sudo apt install ./output/minimax-hub_0.1.45_amd64.deb
 ```
 
 Alternative Debian flow:
 
 ```bash
-sudo dpkg -i output/minimax-hub_0.1.44_amd64.deb
+sudo dpkg -i output/minimax-hub_0.1.45_amd64.deb
 sudo apt -f install
 ```
 
 Fedora, RHEL, or Rocky:
 
 ```bash
-sudo dnf install ./output/minimax-hub-0.1.44-1.x86_64.rpm
+sudo dnf install ./output/minimax-hub-0.1.45-1.x86_64.rpm
 ```
 
 openSUSE:
 
 ```bash
-sudo zypper install ./output/minimax-hub-0.1.44-1.x86_64.rpm
+sudo zypper install ./output/minimax-hub-0.1.45-1.x86_64.rpm
 ```
 
 Run after install:
