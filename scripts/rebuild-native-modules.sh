@@ -7,6 +7,8 @@ payload_dir="${DEFAULT_PAYLOAD_DIR}"
 gateway_dir=""
 cache_dir="${DEFAULT_CACHE_DIR}"
 node_bin=""
+node_bin_dir=""
+npm_bin=""
 dry_run=0
 offline=0
 npm_cache_dir=""
@@ -19,6 +21,7 @@ native_report=""
 sharp_version="0.34.5"
 sharp_linux_package="@img/sharp-linux-x64@0.34.5"
 sharp_libvips_package="@img/sharp-libvips-linux-x64@1.2.4"
+xxhash_package="@node-rs/xxhash@1.7.6"
 xxhash_linux_package="@node-rs/xxhash-linux-x64-gnu@1.7.6"
 better_sqlite3_package=""
 
@@ -55,6 +58,10 @@ run_or_print() {
     return 0
   fi
   "$@"
+}
+
+run_npm() {
+  run_or_print env PATH="${node_bin_dir}:${PATH}" "${npm_bin}" "$@"
 }
 
 relative_path() {
@@ -126,6 +133,8 @@ require_staged_prerequisites() {
   [[ -d "${payload_dir}" ]] || die "Payload directory is missing: ${payload_dir}. Run extraction/assembly staging first or pass --payload-dir. Use --dry-run to preview planned native module operations without a payload."
   [[ -d "${gateway_dir}" ]] || die "Gateway directory is missing: ${gateway_dir}. Run scripts/extract-windows-payload.sh first or pass --gateway-dir."
   [[ -d "${gateway_dir}/node_modules" ]] || die "Gateway node_modules is missing: ${gateway_dir}/node_modules. Task 5 requires an extracted staged gateway payload; run Task 3 extraction before rebuilding native modules."
+  [[ -x "${node_bin}" ]] || die "Packaged Node is missing or not executable: ${node_bin}. Run scripts/fetch-node-linux.sh first or pass --node-bin."
+  [[ -x "${npm_bin}" ]] || die "Packaged npm is missing or not executable: ${npm_bin}. Run scripts/fetch-node-linux.sh first or pass --node-bin."
 }
 
 build_npm_args() {
@@ -152,14 +161,18 @@ detect_better_sqlite3_package() {
     return 0
   fi
 
-  local module_package="${gateway_dir}/node_modules/better-sqlite3/package.json"
-  if [[ -f "${module_package}" ]]; then
-    local detected_version
-    detected_version="$(package_json_version "${module_package}")" || die "Unable to read better-sqlite3 version from ${module_package}."
-    [[ -n "${detected_version}" ]] || die "better-sqlite3 package.json is missing a version: ${module_package}."
-    better_sqlite3_package="better-sqlite3@${detected_version}"
-    return 0
-  fi
+  local module_package
+  for module_package in \
+    "${gateway_dir}/node_modules/better-sqlite3/package.json" \
+    "${WINDOWS_PAYLOAD_CACHE}/payload/resources/gateway/node_modules/better-sqlite3/package.json"; do
+    if [[ -f "${module_package}" ]]; then
+      local detected_version
+      detected_version="$(package_json_version "${module_package}")" || die "Unable to read better-sqlite3 version from ${module_package}."
+      [[ -n "${detected_version}" ]] || die "better-sqlite3 package.json is missing a version: ${module_package}."
+      better_sqlite3_package="better-sqlite3@${detected_version}"
+      return 0
+    fi
+  done
 
   local gateway_package="${gateway_dir}/package.json"
   if [[ -f "${gateway_package}" ]]; then
@@ -251,12 +264,15 @@ remove_forbidden_artifacts() {
 }
 
 install_linux_packages() {
+  detect_better_sqlite3_package
   build_npm_args
   log_action "Installing Linux native package set into ${gateway_dir}/node_modules"
-  run_or_print npm install "${npm_args[@]}" \
+  run_npm install "${npm_args[@]}" \
+    "${better_sqlite3_package}" \
     "sharp@${sharp_version}" \
     "${sharp_linux_package}" \
     "${sharp_libvips_package}" \
+    "${xxhash_package}" \
     "${xxhash_linux_package}"
 }
 
@@ -265,12 +281,12 @@ rebuild_better_sqlite3() {
     detect_better_sqlite3_package
     build_npm_args
     log_action "Installing ${better_sqlite3_package} into staged node_modules for Linux packaged Node ABI${node_abi:+ ${node_abi}}"
-    run_or_print npm install "${npm_args[@]}" "${better_sqlite3_package}" --build-from-source
+    run_npm install "${npm_args[@]}" "${better_sqlite3_package}" --build-from-source
   else
     detect_better_sqlite3_package
     build_npm_args
     log_action "Rebuilding ${better_sqlite3_package} for packaged Node ABI${node_abi:+ ${node_abi}}"
-    run_or_print npm rebuild "${npm_args[@]}" better-sqlite3 --build-from-source
+    run_npm rebuild "${npm_args[@]}" better-sqlite3 --build-from-source
   fi
 
   if [[ -n "${electron_abi}" || -n "${electron_version}" ]]; then
@@ -290,6 +306,13 @@ verify_requires() {
       || die "Staged native module cannot be required with packaged Node (${node_bin}): ${module_name}"
     log_action "OK require: ${module_name}"
     write_report_line "OK require: ${module_name}"
+  done
+}
+native_modules_ready() {
+  [[ -x "${node_bin}" ]] || return 1
+  local module_name
+  for module_name in better-sqlite3 sharp @node-rs/xxhash; do
+    NODE_PATH="${gateway_dir}/node_modules" "${node_bin}" -e "require('${module_name}');" >/dev/null 2>&1 || return 1
   done
 }
 
@@ -383,6 +406,8 @@ fi
 if [[ -z "${node_bin}" ]]; then
   node_bin="${payload_dir}/node/bin/node"
 fi
+node_bin_dir="$(dirname "${node_bin}")"
+npm_bin="${node_bin_dir}/npm"
 if [[ -z "${npm_cache_dir}" ]]; then
   npm_cache_dir="${cache_dir}/npm"
 fi
@@ -392,31 +417,26 @@ log_action "- payload: ${payload_dir}"
 log_action "- gateway: ${gateway_dir}"
 log_action "- node_modules: ${gateway_dir}/node_modules"
 log_action "- node: ${node_bin}"
+log_action "- npm: ${npm_bin}"
 log_action "- cache: ${cache_dir}"
 log_action "- npm cache: ${npm_cache_dir}"
 log_action "- npm mode: $([[ "${offline}" -eq 1 ]] && echo offline || echo online)"
-log_action "- packages: sharp@${sharp_version}, ${sharp_linux_package}, ${sharp_libvips_package}, ${xxhash_linux_package}"
+log_action "- packages: sharp@${sharp_version}, ${sharp_linux_package}, ${sharp_libvips_package}, ${xxhash_package}, ${xxhash_linux_package}"
 
 if [[ "${dry_run}" -eq 1 ]]; then
   log_action "Dry run only; npm will not run and files will not be changed."
   if [[ -d "${gateway_dir}/node_modules" ]]; then
     remove_forbidden_artifacts
     report_abi_locations
-    if [[ -d "${gateway_dir}/node_modules/better-sqlite3" || -f "${gateway_dir}/package.json" ]]; then
-      rebuild_better_sqlite3
+    if [[ -d "${gateway_dir}/node_modules/better-sqlite3" || -f "${WINDOWS_PAYLOAD_CACHE}/payload/resources/gateway/node_modules/better-sqlite3/package.json" || -f "${gateway_dir}/package.json" ]]; then
+      install_linux_packages
     else
-      log_action "better-sqlite3: no staged module or gateway package.json found; non-dry-run would fail before selecting an install version."
+      log_action "better-sqlite3: no staged module, cached source module, or gateway package.json found; non-dry-run would fail before selecting an install version."
     fi
   else
     log_action "Staged node_modules is absent; non-dry-run would fail clearly before npm."
     log_action "better-sqlite3: would rebuild an existing staged module or install a version inferred from staged gateway package.json."
   fi
-  build_npm_args
-  run_or_print npm install "${npm_args[@]}" \
-    "sharp@${sharp_version}" \
-    "${sharp_linux_package}" \
-    "${sharp_libvips_package}" \
-    "${xxhash_linux_package}"
   exit 0
 fi
 
@@ -425,10 +445,15 @@ ensure_dir "${cache_dir}"
 ensure_dir "${npm_cache_dir}"
 write_native_inventory
 detect_node_abi
+detect_better_sqlite3_package
 report_abi_locations
 remove_forbidden_artifacts
-install_linux_packages
-rebuild_better_sqlite3
+if native_modules_ready; then
+  log_action "Existing Linux native modules already load with packaged Node; skipping npm install"
+  write_report_line "Existing Linux native modules already load with packaged Node; skipped npm install"
+else
+  install_linux_packages
+fi
 
 remaining_forbidden="$(find_forbidden_windows_artifacts "${gateway_dir}/node_modules")"
 if [[ -n "${remaining_forbidden}" ]]; then
