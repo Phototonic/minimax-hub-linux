@@ -4,7 +4,7 @@
 %global payload_filelist %{?_payload_filelist}%{!?_payload_filelist:%{_builddir}/minimax-hub-payload.files}
 
 Name: minimax-hub
-Version: %{?_version}%{!?_version:0.1.44}
+Version: %{?_version}%{!?_version:0.1.45}
 Release: 1%{?dist}
 Summary: MiniMax Hub unofficial Linux package
 License: Proprietary payload not included
@@ -48,7 +48,7 @@ test -s "%{staged_root}/usr/share/icons/hicolor/256x256/apps/minimax-hub.png"
 %install
 rm -rf "%{buildroot}"
 mkdir -p "%{buildroot}/opt" "%{buildroot}/usr/bin" "%{buildroot}/usr/share/applications" "%{buildroot}/usr/share/icons/hicolor/256x256/apps"
-cp -a "%{staged_root}/opt/minimax-hub" "%{buildroot}/opt/"
+(cd "%{staged_root}/opt" && tar -cf - minimax-hub) | (cd "%{buildroot}/opt" && tar -xf -)
 install -m 0755 "%{staged_root}/usr/bin/minimax-hub" "%{buildroot}/usr/bin/minimax-hub"
 install -m 0644 "%{staged_root}/usr/share/applications/minimax-hub.desktop" "%{buildroot}/usr/share/applications/minimax-hub.desktop"
 install -m 0644 "%{staged_root}/usr/share/icons/hicolor/256x256/apps/minimax-hub.png" "%{buildroot}/usr/share/icons/hicolor/256x256/apps/minimax-hub.png"

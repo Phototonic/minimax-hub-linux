@@ -4,8 +4,7 @@ set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/scripts/common.sh"
 
 VERSION="$(tr -d '[:space:]' < "${VERSION_FILE}")"
-RPM_TOPDIR="${PROJECT_ROOT}/.cache/rpm"
-RPM_BUILDROOT="${RPM_TOPDIR}/buildroot"
+RPM_TOPDIR="${MINIMAX_HUB_RPM_TOPDIR:-/tmp/minimax-hub-rpm-${VERSION}}"
 OUTPUT_DIR="${PROJECT_ROOT}/output"
 SPEC_FILE="${PROJECT_ROOT}/rpm/minimax-hub.spec"
 STAGED_ROOT="${PROJECT_ROOT}/linux-build"
@@ -21,6 +20,7 @@ Builds a native RPM package from the assembled linux-build payload.
 
 Required tools:
   rpmbuild  Build the RPM package
+  tar       Stream the staged payload into the RPM buildroot
   rpm       Verify the built RPM metadata when available
 
 USAGE
@@ -81,6 +81,7 @@ validate_rpm_toolchain() {
   if ! command -v rpmbuild >/dev/null 2>&1; then
     die "Required command not found: rpmbuild. Install rpm-build, or run this script in a Fedora/RHEL/Rocky environment with RPM build tools."
   fi
+  require_command tar
 }
 
 prepare_rpm_tree() {
