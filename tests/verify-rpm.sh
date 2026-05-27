@@ -40,6 +40,8 @@ assert_contains "${requires}" "gtk3" "rpm -qp --requires output"
 assert_contains "${requires}" "nss" "rpm -qp --requires output"
 assert_contains "${requires}" "desktop-file-utils" "rpm -qp --requires output"
 assert_contains "${scripts}" "update-desktop-database" "rpm -qp --scripts output"
+assert_contains "${scripts}" "xdg-mime default minimax-hub.desktop x-scheme-handler/minimax-hub" "rpm -qp --scripts output"
+assert_contains "${scripts}" "gio mime x-scheme-handler/minimax-hub minimax-hub.desktop" "rpm -qp --scripts output"
 assert_contains "${scripts}" "chrome-sandbox" "rpm -qp --scripts output"
 
 if command -v rpm2cpio >/dev/null 2>&1 && command -v cpio >/dev/null 2>&1; then

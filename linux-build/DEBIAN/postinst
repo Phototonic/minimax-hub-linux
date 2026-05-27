@@ -11,6 +11,16 @@ refresh_desktop_caches() {
   fi
 }
 
+register_protocol_handler() {
+  if command -v xdg-mime >/dev/null 2>&1; then
+    xdg-mime default minimax-hub.desktop x-scheme-handler/minimax-hub >/dev/null 2>&1 || true
+  fi
+
+  if command -v gio >/dev/null 2>&1; then
+    gio mime x-scheme-handler/minimax-hub minimax-hub.desktop >/dev/null 2>&1 || true
+  fi
+}
+
 fix_chrome_sandbox() {
   local sandbox="/opt/minimax-hub/chrome-sandbox"
   [[ -e "${sandbox}" || -L "${sandbox}" ]] || return 0
@@ -24,6 +34,7 @@ fix_chrome_sandbox() {
 case "${1:-configure}" in
   configure|triggered)
     fix_chrome_sandbox
+    register_protocol_handler
     refresh_desktop_caches
     ;;
   *)

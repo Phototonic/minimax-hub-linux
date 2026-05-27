@@ -62,6 +62,12 @@ chmod 0755 "%{buildroot}/opt/minimax-hub/resources/opencode/opencode" || :
 find "%{buildroot}/opt/minimax-hub" -mindepth 1 \( -type f -o -type l \) -printf '/%%P\n' | sed 's#^/#/opt/minimax-hub/#' | LC_ALL=C sort | grep -Fxv '/opt/minimax-hub/chrome-sandbox' > "%{payload_filelist}"
 
 %post
+if command -v xdg-mime >/dev/null 2>&1; then
+  xdg-mime default minimax-hub.desktop x-scheme-handler/minimax-hub >/dev/null 2>&1 || :
+fi
+if command -v gio >/dev/null 2>&1; then
+  gio mime x-scheme-handler/minimax-hub minimax-hub.desktop >/dev/null 2>&1 || :
+fi
 if command -v update-desktop-database >/dev/null 2>&1; then
   update-desktop-database /usr/share/applications || :
 fi
