@@ -1,9 +1,9 @@
 {
   "packageName": "minimax-hub",
   "projectName": "minimax-hub-linux",
-  "appVersion": "0.1.44",
+  "appVersion": "0.1.45",
   "versionSource": "VERSION",
-  "miniMaxHubVersion": "0.1.44",
+  "miniMaxHubVersion": "0.1.45",
   "openCodeVersion": "1.15.10",
   "packageRevision": "1",
   "architecture": {
@@ -19,27 +19,27 @@
     "desktopFile": "/usr/share/applications/minimax-hub.desktop",
     "iconPath": "/usr/share/icons/hicolor/256x256/apps/minimax-hub.png"
   },
-  "sourceInstallPath": "C:\\Users\\Lucas\\AppData\\Local\\Programs\\MiniMax Hub",
+  "sourceInstallPath": null,
   "protocols": {
     "schemes": [],
     "notes": "Protocol handler schemes have not been discovered yet."
   },
   "runtimePlaceholders": {
-    "electronVersion": null,
-    "nodeVersion": null,
-    "ffmpegVersion": null,
-    "ffprobeVersion": null,
+    "electronVersion": "38.8.6",
+    "nodeVersion": "22.22.0",
+    "ffmpegVersion": "latest",
+    "ffprobeVersion": "latest",
     "gatewayEntrypoint": "resources/gateway/dist/main.js",
     "mcpToolsEntrypoint": "resources/mcp-tools/dist/main.js"
   },
   "checksums": {
     "windowsPayload": null,
     "appAsar": null,
-    "electronLinux": null,
-    "opencodeLinux": null,
-    "nodeLinux": null,
-    "ffmpegLinux": null,
-    "ffprobeLinux": null
+    "electronLinux": "41a8f2bc7c0be836b4dc8de19550a65947cffa58433753032af36ee3b849e8be",
+    "opencodeLinux": "a4c0c94a7fdbf637e3ae479c046ca49e925370b4cee503dfba7ab677a13cd0c5",
+    "nodeLinux": "9aa8e9d2298ab68c600bd6fb86a6c13bce11a4eca1ba9b39d79fa021755d7c37",
+    "ffmpegLinux": "1f4b027b506dd6460d5e80f6a26b20a59d8ad9773e505d190d47f6012d123d26",
+    "ffprobeLinux": "7947a78e39cf70ea5b274499d378069607212650470445d3a61a4b784f93cd40"
   },
   "notes": "Scaffold metadata only. Null and empty placeholder values indicate undiscovered values and are not claims."
 }
