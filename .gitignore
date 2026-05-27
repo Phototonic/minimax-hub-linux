@@ -28,6 +28,7 @@ proprietary-payload/
 linux-build/opt/minimax-hub/**
 !linux-build/opt/minimax-hub/
 !linux-build/opt/minimax-hub/.gitkeep
+linux-build/usr/share/icons/hicolor/256x256/apps/*.png
 
 # Dependencies and caches
 node_modules/
