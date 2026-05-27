@@ -66,7 +66,7 @@ assert_file_matches() {
 
 assert_no_crlf() {
   local path="$1"
-  require_file "${path}"
+  [[ -f "${path}" ]] || fail "Required file is missing: ${path}"
   if LC_ALL=C grep -q $'\r' "${path}"; then
     fail "CRLF line endings are not allowed in packaged text file: ${path}"
   fi

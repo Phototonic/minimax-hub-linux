@@ -49,6 +49,7 @@ relative_path() {
 normalize_text_file() {
   local file_path="$1"
   [[ -f "${file_path}" ]] || return 0
+  LC_ALL=C grep -q $'\r' "${file_path}" || return 0
   log_action "Normalize line endings: $(relative_path "${PROJECT_ROOT}" "${file_path}")"
   if [[ "${dry_run}" -eq 1 ]]; then
     run_or_print sh -c 'tmp="$(mktemp "${1}.XXXXXX")"; tr -d "\r" < "$1" > "$tmp"; cat "$tmp" > "$1"; rm -f "$tmp"' sh "${file_path}"
@@ -117,6 +118,19 @@ fix_executable_bits() {
   set_executable "${payload_dir}/resources/opencode/opencode"
   set_executable "${payload_dir}/resources/ffmpeg/ffmpeg"
   set_executable "${payload_dir}/resources/ffmpeg/ffprobe"
+}
+prune_packaged_node_windows_artifacts() {
+  local node_dir="${payload_dir}/node"
+  [[ -d "${node_dir}" ]] || return 0
+
+  log_action "Prune Windows-only helper artifacts from packaged Node runtime"
+  while IFS= read -r -d '' artifact; do
+    log_action "Remove Windows-only Node artifact: $(relative_path "${PROJECT_ROOT}" "${artifact}")"
+    run_or_print rm -rf "${artifact}"
+  done < <(find "${node_dir}" \( \
+    -type f \( -iname '*.cmd' -o -iname '*.bat' \) -o \
+    -type d \( -iname 'VC-WIN32' -o -iname '*win32*' -o -iname '*windows*' -o -iname '*msvc*' \) \
+  \) -print0)
 }
 
 check_crlf_free() {
@@ -252,6 +266,7 @@ if [[ ! -d "${payload_dir}" ]]; then
 fi
 
 fix_executable_bits
+prune_packaged_node_windows_artifacts
 remove_linux_updater_metadata
 normalize_packaging_text_files
 normalize_payload_text_files
@@ -265,8 +280,12 @@ fi
 verify_crlf_free
 verify_no_forbidden_windows_artifacts
 verify_no_linux_updater_metadata
-write_sorted_inventory "${payload_dir}" "${assembly_dir}/inventory.txt"
-write_sha256_report "${payload_dir}" "${assembly_dir}/sha256.txt"
+if [[ "${MINIMAX_HUB_SKIP_PAYLOAD_REPORTS:-0}" == "1" ]]; then
+  log_action "Skip payload inventory and checksum reports because MINIMAX_HUB_SKIP_PAYLOAD_REPORTS=1"
+else
+  write_sorted_inventory "${payload_dir}" "${assembly_dir}/inventory.txt"
+  write_sha256_report "${payload_dir}" "${assembly_dir}/sha256.txt"
+fi
 write_normalization_report
 
 info "Payload normalized at ${payload_dir}"

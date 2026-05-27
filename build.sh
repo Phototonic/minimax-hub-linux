@@ -62,6 +62,7 @@ require_chrome_sandbox_if_present() {
 normalize_text_file() {
   local file_path="$1"
   [[ -f "${file_path}" ]] || return 0
+  LC_ALL=C grep -q $'\r' "${file_path}" || return 0
   local temp_file
   temp_file="$(mktemp "${file_path}.XXXXXX")"
   tr -d '\r' <"${file_path}" >"${temp_file}"
@@ -102,7 +103,9 @@ normalize_debian_package() {
   normalize_text_file "${DEBIAN_ROOT}/DEBIAN/postrm"
   normalize_text_file "${DEBIAN_ROOT}/usr/bin/${PACKAGE_NAME}"
   normalize_text_file "${DEBIAN_ROOT}/usr/share/applications/${PACKAGE_NAME}.desktop"
-  normalize_payload_text_files
+  if [[ "${MINIMAX_HUB_SKIP_PAYLOAD_NORMALIZE:-0}" != "1" ]]; then
+    normalize_payload_text_files
+  fi
 
   set_executable_if_present "${DEBIAN_ROOT}/usr/bin/${PACKAGE_NAME}"
   set_executable_if_present "${DEBIAN_ROOT}/DEBIAN/postinst"
@@ -169,19 +172,40 @@ validate_package_payload() {
 }
 
 prepare_permissions() {
+  chmod 0755 "${DEBIAN_ROOT}/DEBIAN"
   chmod 0755 "${DEBIAN_ROOT}/usr/bin/${PACKAGE_NAME}"
+  chmod 0644 "${DEBIAN_ROOT}/DEBIAN/control"
   chmod 0755 "${DEBIAN_ROOT}/DEBIAN/postinst" "${DEBIAN_ROOT}/DEBIAN/prerm" "${DEBIAN_ROOT}/DEBIAN/postrm"
   chmod 0755 "${PAYLOAD_DIR}/electron" "${PAYLOAD_DIR}/node/bin/node" "${PAYLOAD_DIR}/resources/opencode/opencode"
   require_chrome_sandbox_if_present "${PAYLOAD_DIR}/chrome-sandbox"
   chmod 4755 "${PAYLOAD_DIR}/chrome-sandbox"
 }
+sync_control_version() {
+  require_file_present "${DEBIAN_CONTROL}" "Debian control file"
+  local temp_control
+  temp_control="$(mktemp "${DEBIAN_CONTROL}.XXXXXX")"
+  awk -v version="${VERSION}" '
+    BEGIN { updated = 0 }
+    /^Version:/ { print "Version: " version; updated = 1; next }
+    { print }
+    END { if (!updated) exit 1 }
+  ' "${DEBIAN_CONTROL}" >"${temp_control}" || die "${DEBIAN_CONTROL} must contain a Version field"
+  cat "${temp_control}" >"${DEBIAN_CONTROL}"
+  rm -f "${temp_control}"
+}
 
 build_deb() {
   rm -f "${DEB_PATH}"
   ensure_dir "${OUTPUT_DIR}"
-  dpkg-deb --root-owner-group --build "${DEBIAN_ROOT}" "${DEB_PATH}"
+  local temp_deb
+  temp_deb="$(mktemp "/tmp/${PACKAGE_NAME}_${VERSION}_${ARCHITECTURE}.XXXXXX.deb")"
+  rm -f "${temp_deb}"
+  dpkg-deb --root-owner-group -Zgzip --build "${DEBIAN_ROOT}" "${temp_deb}"
+  cp -f "${temp_deb}" "${DEB_PATH}"
+  rm -f "${temp_deb}"
 }
 
+sync_control_version
 validate_control_metadata
 normalize_debian_package
 validate_package_payload
