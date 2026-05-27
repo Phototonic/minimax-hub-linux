@@ -275,7 +275,7 @@ run_pipeline_container() {
     bash -lc '
       set -euo pipefail
       apt-get update >/dev/null
-      apt-get install -y curl unzip tar xz-utils python3 ca-certificates npm build-essential pkg-config git >/dev/null
+      apt-get install -y curl unzip tar xz-utils python3 ca-certificates npm build-essential pkg-config git libnspr4 libnss3 libgtk-3-0 libx11-6 libx11-xcb1 libxcb1 libxcomposite1 libxdamage1 libxrandr2 libasound2t64 libdrm2 libgbm1 >/dev/null
       if [[ "${RESUME}" != "1" || ! -d .cache/windows-payload/payload ]]; then
         bash scripts/extract-windows-payload.sh --source "${SOURCE_PATH}"
       else

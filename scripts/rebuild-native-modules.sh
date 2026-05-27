@@ -7,6 +7,7 @@ payload_dir="${DEFAULT_PAYLOAD_DIR}"
 gateway_dir=""
 cache_dir="${DEFAULT_CACHE_DIR}"
 node_bin=""
+electron_bin=""
 node_bin_dir=""
 npm_bin=""
 dry_run=0
@@ -17,6 +18,7 @@ electron_abi=""
 electron_version=""
 
 native_report=""
+dual_abi_loader_backup=""
 
 sharp_version="0.34.5"
 sharp_linux_package="@img/sharp-linux-x64@0.34.5"
@@ -36,6 +38,7 @@ Options:
   --gateway-dir DIR       Gateway root (default: PAYLOAD_DIR/resources/gateway)
   --cache-dir DIR         Cache/report directory (default: .cache/runtimes)
   --node-bin FILE         Packaged Node binary (default: PAYLOAD_DIR/node/bin/node)
+  --electron-bin FILE     Packaged Electron binary (default: PAYLOAD_DIR/electron)
   --node-abi ABI          Expected Node module ABI for better-sqlite3 reporting/rebuild context
   --electron-abi ABI      Expected Electron module ABI for better-sqlite3 reporting/rebuild context
   --electron-version VER  Electron version for optional better-sqlite3 Electron rebuild guidance
@@ -156,6 +159,46 @@ detect_node_abi() {
   fi
 }
 
+detect_electron_version() {
+  if [[ -x "${electron_bin}" ]]; then
+    electron_version="$(ELECTRON_RUN_AS_NODE=1 "${electron_bin}" -p 'process.versions.electron')" \
+      || die "Unable to detect Electron version using ${electron_bin}. Pass --electron-version explicitly."
+    return 0
+  fi
+  if [[ -z "${electron_version}" ]]; then
+    electron_version="$(manifest_value runtimePlaceholders.electronVersion 2>/dev/null || true)"
+  fi
+}
+
+detect_electron_abi() {
+  if [[ -n "${electron_abi}" ]]; then
+    return 0
+  fi
+  if [[ -x "${electron_bin}" ]]; then
+    electron_abi="$(ELECTRON_RUN_AS_NODE=1 "${electron_bin}" -p 'process.versions.modules')" \
+      || die "Unable to detect Electron ABI using ${electron_bin}. Pass --electron-abi explicitly."
+  fi
+  if [[ -z "${electron_abi}" ]]; then
+    die "Electron ABI is required for better-sqlite3. Ensure ${electron_bin} is executable or pass --electron-abi."
+  fi
+}
+
+require_electron_rebuild_context() {
+  if [[ -x "${electron_bin}" ]]; then
+    detect_electron_version
+    detect_electron_abi
+    return 0
+  fi
+
+  if [[ -n "${electron_abi}" && -n "${electron_version}" ]]; then
+    log_action "Electron binary is not executable; using explicit Electron version ${electron_version} and ABI ${electron_abi}"
+    write_report_line "Electron binary unavailable; using explicit Electron version ${electron_version} and ABI ${electron_abi}"
+    return 0
+  fi
+
+  die "Electron binary is missing or not executable: ${electron_bin}. Run scripts/fetch-electron-linux.sh first, or pass both --electron-version and --electron-abi."
+}
+
 detect_better_sqlite3_package() {
   if [[ -n "${better_sqlite3_package}" ]]; then
     return 0
@@ -233,6 +276,75 @@ report_abi_locations() {
   fi
 }
 
+backup_dual_abi_loader() {
+  local target="${gateway_dir}/node_modules/better-sqlite3/lib/database.js"
+  dual_abi_loader_backup="${cache_dir}/better-sqlite3-database.dual-abi.js"
+  if [[ -f "${target}" ]] && grep -F "hilo-agent-opencode patch: dual-ABI binding loader" "${target}" >/dev/null 2>&1; then
+    mkdir -p "$(dirname "${dual_abi_loader_backup}")"
+    cp -f "${target}" "${dual_abi_loader_backup}"
+    log_action "Backed up better-sqlite3 dual-ABI loader patch"
+    write_report_line "Backed up better-sqlite3 dual-ABI loader patch"
+  fi
+}
+
+better_sqlite3_release_node() {
+  printf '%s\n' "${gateway_dir}/node_modules/better-sqlite3/build/Release/better_sqlite3.node"
+}
+
+better_sqlite3_abi_node() {
+  local abi="$1"
+  printf '%s\n' "${gateway_dir}/node_modules/better-sqlite3/build/Release-abi-${abi}/better_sqlite3.node"
+}
+
+copy_release_to_abi_dir() {
+  local abi="$1"
+  local label="$2"
+  local mode="${3:-keep}"
+  local release_node
+  release_node="$(better_sqlite3_release_node)"
+  [[ -f "${release_node}" ]] || die "Cannot snapshot better-sqlite3 ${label} ABI ${abi}; missing ${release_node}"
+  local abi_node abi_dir
+  abi_node="$(better_sqlite3_abi_node "${abi}")"
+  if [[ -f "${abi_node}" && "${mode}" != "overwrite" ]]; then
+    log_action "Existing better-sqlite3 ${label} ABI ${abi} snapshot found at ${abi_node}"
+    write_report_line "Existing better-sqlite3 ${label} ABI ${abi} snapshot: ${abi_node}"
+    return 0
+  fi
+  abi_dir="$(dirname "${abi_node}")"
+  mkdir -p "${abi_dir}"
+  cp -f "${release_node}" "${abi_node}"
+  log_action "Snapshotted better-sqlite3 ${label} ABI ${abi} to ${abi_node}"
+  write_report_line "Snapshotted better-sqlite3 ${label} ABI ${abi}: ${abi_node}"
+}
+
+restore_dual_abi_loader() {
+  local target="${gateway_dir}/node_modules/better-sqlite3/lib/database.js"
+  local source=""
+  local candidate
+  for candidate in \
+    "${dual_abi_loader_backup}" \
+    "${target}" \
+    "${WINDOWS_PAYLOAD_CACHE}/payload/resources/gateway/node_modules/better-sqlite3/lib/database.js"; do
+    if [[ -f "${candidate}" ]] && grep -F "hilo-agent-opencode patch: dual-ABI binding loader" "${candidate}" >/dev/null 2>&1; then
+      source="${candidate}"
+      break
+    fi
+  done
+
+  if [[ -z "${source}" ]]; then
+    log_action "better-sqlite3 dual-ABI loader patch not found; keeping installed database.js"
+    write_report_line "better-sqlite3 dual-ABI loader patch not found; kept installed database.js"
+    return 0
+  fi
+
+  mkdir -p "$(dirname "${target}")"
+  if [[ "${source}" != "${target}" ]]; then
+    cp -f "${source}" "${target}"
+  fi
+  log_action "Restored better-sqlite3 dual-ABI loader patch"
+  write_report_line "Restored better-sqlite3 dual-ABI loader patch"
+}
+
 remove_forbidden_artifacts() {
   local forbidden
   forbidden="$(find_forbidden_windows_artifacts "${gateway_dir}/node_modules")"
@@ -296,6 +408,16 @@ rebuild_better_sqlite3() {
   fi
 }
 
+rebuild_better_sqlite3_for_electron() {
+  [[ -n "${electron_abi}" ]] || return 0
+  [[ -n "${electron_version}" ]] || die "Electron ABI ${electron_abi} requires --electron-version so better-sqlite3 can be rebuilt against Electron headers."
+  detect_better_sqlite3_package
+  build_npm_args
+  log_action "Rebuilding ${better_sqlite3_package} for Electron ${electron_version} ABI ${electron_abi}"
+  run_npm rebuild "${npm_args[@]}" better-sqlite3 --build-from-source --runtime=electron --target="${electron_version}" --dist-url=https://electronjs.org/headers
+  copy_release_to_abi_dir "${electron_abi}" "Electron" "overwrite"
+}
+
 verify_requires() {
   if [[ ! -x "${node_bin}" ]]; then
     die "Packaged Node is missing or not executable: ${node_bin}. Run scripts/fetch-node-linux.sh first or pass --node-bin."
@@ -307,6 +429,15 @@ verify_requires() {
     log_action "OK require: ${module_name}"
     write_report_line "OK require: ${module_name}"
   done
+}
+
+verify_electron_requires() {
+  [[ -n "${electron_abi}" ]] || return 0
+  [[ -x "${electron_bin}" ]] || die "Electron binary is missing or not executable: ${electron_bin}. Run scripts/fetch-electron-linux.sh first or pass --electron-bin."
+  NODE_PATH="${gateway_dir}/node_modules" ELECTRON_RUN_AS_NODE=1 "${electron_bin}" -e "require('better-sqlite3');" \
+    || die "Staged native module cannot be required with packaged Electron (${electron_bin}): better-sqlite3"
+  log_action "OK Electron require: better-sqlite3"
+  write_report_line "OK Electron require: better-sqlite3"
 }
 native_modules_ready() {
   [[ -x "${node_bin}" ]] || return 1
@@ -362,6 +493,11 @@ while [[ $# -gt 0 ]]; do
       node_bin="$2"
       shift 2
       ;;
+    --electron-bin)
+      [[ $# -ge 2 ]] || die "--electron-bin requires a path."
+      electron_bin="$2"
+      shift 2
+      ;;
     --node-abi)
       [[ $# -ge 2 ]] || die "--node-abi requires a value."
       node_abi="$2"
@@ -406,6 +542,9 @@ fi
 if [[ -z "${node_bin}" ]]; then
   node_bin="${payload_dir}/node/bin/node"
 fi
+if [[ -z "${electron_bin}" ]]; then
+  electron_bin="${payload_dir}/electron"
+fi
 node_bin_dir="$(dirname "${node_bin}")"
 npm_bin="${node_bin_dir}/npm"
 if [[ -z "${npm_cache_dir}" ]]; then
@@ -417,6 +556,7 @@ log_action "- payload: ${payload_dir}"
 log_action "- gateway: ${gateway_dir}"
 log_action "- node_modules: ${gateway_dir}/node_modules"
 log_action "- node: ${node_bin}"
+log_action "- electron: ${electron_bin}${electron_version:+ (${electron_version})}"
 log_action "- npm: ${npm_bin}"
 log_action "- cache: ${cache_dir}"
 log_action "- npm cache: ${npm_cache_dir}"
@@ -445,8 +585,10 @@ ensure_dir "${cache_dir}"
 ensure_dir "${npm_cache_dir}"
 write_native_inventory
 detect_node_abi
+require_electron_rebuild_context
 detect_better_sqlite3_package
 report_abi_locations
+backup_dual_abi_loader
 remove_forbidden_artifacts
 if native_modules_ready; then
   log_action "Existing Linux native modules already load with packaged Node; skipping npm install"
@@ -454,6 +596,10 @@ if native_modules_ready; then
 else
   install_linux_packages
 fi
+restore_dual_abi_loader
+copy_release_to_abi_dir "${node_abi}" "Node"
+rebuild_better_sqlite3_for_electron
+restore_dual_abi_loader
 
 remaining_forbidden="$(find_forbidden_windows_artifacts "${gateway_dir}/node_modules")"
 if [[ -n "${remaining_forbidden}" ]]; then
@@ -464,6 +610,7 @@ fi
 write_native_inventory
 report_abi_locations
 verify_requires
+verify_electron_requires
 
 info "Wrote ${native_report}"
 info "Native module rebuild completed for ${gateway_dir}/node_modules"

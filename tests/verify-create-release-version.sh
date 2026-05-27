@@ -4,6 +4,8 @@ set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/testlib.sh"
 
 assert_file_contains "${PROJECT_ROOT}/create-release.sh" "Run 'bash create-release.sh --publish' to rebuild and upload artifacts"
+assert_file_contains "${PROJECT_ROOT}/create-release.sh" "libnspr4 libnss3"
+assert_file_contains "${PROJECT_ROOT}/create-release.sh" "libgtk-3-0"
 if grep -F -- "Run 'bash create-release.sh --publish \${VERSION}'" "${PROJECT_ROOT}/create-release.sh" >/dev/null; then
   fail "create-release.sh must not tell maintainers to pass an explicit version to --publish"
 fi
