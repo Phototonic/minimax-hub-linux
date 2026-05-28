@@ -145,16 +145,23 @@ write_sorted_inventory() {
 write_sha256_report() {
   local root_dir="$1"
   local output_file="$2"
-  local hasher
+  local hasher jobs
 
   [[ -d "${root_dir}" ]] || die "Cannot checksum missing directory: ${root_dir}"
   ensure_dir "$(dirname "${output_file}")"
   hasher="$(sha256_command)"
 
-  : >"${output_file}"
-  while IFS= read -r relative_path; do
-    (cd "${root_dir}" && ${hasher} "${relative_path}") >>"${output_file}"
-  done < <((cd "${root_dir}" && find . -type f -printf '%P\n' | LC_ALL=C sort))
+  jobs="${MINIMAX_HUB_CHECKSUM_JOBS:-}"
+  if [[ -z "${jobs}" ]]; then
+    if command -v nproc >/dev/null 2>&1; then
+      jobs="$(nproc)"
+    else
+      jobs=4
+    fi
+  fi
+
+  (cd "${root_dir}" && find . -type f -printf '%P\0' | LC_ALL=C sort -z | xargs -0 -r -P "${jobs}" ${hasher}) \
+    | LC_ALL=C sort >"${output_file}"
 }
 
 find_forbidden_windows_artifacts() {

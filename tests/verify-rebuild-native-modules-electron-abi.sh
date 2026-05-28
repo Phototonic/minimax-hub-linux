@@ -125,4 +125,10 @@ assert_file_contains "${gateway_dir}/node_modules/better-sqlite3/build/Release-a
 assert_file_contains "${gateway_dir}/node_modules/better-sqlite3/build/Release-abi-139/better_sqlite3.node" "electron:38.8.6"
 assert_file_contains "${gateway_dir}/node_modules/better-sqlite3/lib/database.js" "hilo-agent-opencode patch: dual-ABI binding loader"
 
+second_output="$(PATH="${fake_bin}:${PATH}" bash "${PROJECT_ROOT}/scripts/rebuild-native-modules.sh" \
+  --payload-dir "${payload_dir}" \
+  --cache-dir "${cache_dir}" \
+  --electron-version 38.8.6)"
+assert_contains "${second_output}" "skipping npm install and rebuild" "second native rebuild output"
+
 echo "Electron ABI native module rebuild verification passed"

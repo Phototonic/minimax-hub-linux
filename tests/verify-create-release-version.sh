@@ -4,6 +4,14 @@ set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/testlib.sh"
 
 assert_file_contains "${PROJECT_ROOT}/create-release.sh" "Run 'bash create-release.sh --publish' to rebuild and upload artifacts"
+assert_file_contains "${PROJECT_ROOT}/create-release.sh" "DEFAULT_DEB_BUILDER_IMAGE"
+assert_file_contains "${PROJECT_ROOT}/create-release.sh" "[TIMING] START"
+assert_file_contains "${PROJECT_ROOT}/create-release.sh" "scripts/extract-windows-payload.sh --source \"\${SOURCE_PATH}\" --no-reports"
+assert_file_contains "${PROJECT_ROOT}/create-release.sh" "scripts/inspect-payload.sh --fast"
+assert_file_contains "${PROJECT_ROOT}/create-release.sh" "scripts/stage-native-rebuild-payload.sh"
+if grep -F -- "assemble-linux-payload.sh --no-normalize" "${PROJECT_ROOT}/create-release.sh" >/dev/null; then
+  fail "create-release cold path must not run a full pre-rebuild assembly"
+fi
 assert_file_contains "${PROJECT_ROOT}/create-release.sh" "libnspr4 libnss3"
 assert_file_contains "${PROJECT_ROOT}/create-release.sh" "libgtk-3-0"
 if grep -F -- "Run 'bash create-release.sh --publish \${VERSION}'" "${PROJECT_ROOT}/create-release.sh" >/dev/null; then

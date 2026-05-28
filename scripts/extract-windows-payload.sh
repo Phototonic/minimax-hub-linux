@@ -5,16 +5,18 @@ source "$(dirname "${BASH_SOURCE[0]}")/common.sh"
 
 cache_dir="${WINDOWS_PAYLOAD_CACHE}"
 source_path=""
+write_reports="${MINIMAX_HUB_PAYLOAD_REPORTS:-1}"
 
 usage() {
   cat <<USAGE
-Usage: $(basename "$0") [--source PATH] [--cache-dir PATH]
+Usage: $(basename "$0") [--source PATH] [--cache-dir PATH] [--no-reports]
 
 Stages MiniMax Hub Windows application resources into an ignored cache.
 
 Options:
   --source PATH     MiniMax Hub install root. Defaults to package-manifest.json sourceInstallPath.
   --cache-dir PATH  Output cache directory. Defaults to .cache/windows-payload.
+  --no-reports      Skip inventory/checksum/discovery reports; keep required safety checks.
   -h, --help        Show this help text.
 
 The staged Linux-source payload is written to CACHE_DIR/payload and reports are
@@ -33,6 +35,10 @@ while [[ $# -gt 0 ]]; do
       [[ $# -ge 2 ]] || die "--cache-dir requires a path."
       cache_dir="$2"
       shift 2
+      ;;
+    --no-reports)
+      write_reports=0
+      shift
       ;;
     -h|--help)
       usage
@@ -155,12 +161,18 @@ copy_matching_top_level_files "${resolved_source}" "${payload_dir}"
 
 remove_forbidden_windows_artifacts "${payload_dir}"
 
-write_sorted_inventory "${payload_dir}" "${cache_dir}/inventory.txt"
-write_sha256_report "${payload_dir}" "${cache_dir}/sha256.txt"
-write_extraction_report "${payload_dir}" "${cache_dir}/report.txt" "${resolved_source}"
+if [[ "${write_reports}" == "1" ]]; then
+  write_sorted_inventory "${payload_dir}" "${cache_dir}/inventory.txt"
+  write_sha256_report "${payload_dir}" "${cache_dir}/sha256.txt"
+  write_extraction_report "${payload_dir}" "${cache_dir}/report.txt" "${resolved_source}"
+else
+  info "Skipping extraction inventory/checksum/discovery reports because reports are disabled"
+fi
 
 forbidden="$(find_forbidden_windows_artifacts "${payload_dir}")"
 [[ -z "${forbidden}" ]] || die "Forbidden Windows artifacts remain in staged payload: ${forbidden}"
 
 info "Staged Windows payload resources in ${payload_dir}"
-info "Wrote ${cache_dir}/inventory.txt, ${cache_dir}/sha256.txt, and ${cache_dir}/report.txt"
+if [[ "${write_reports}" == "1" ]]; then
+  info "Wrote ${cache_dir}/inventory.txt, ${cache_dir}/sha256.txt, and ${cache_dir}/report.txt"
+fi

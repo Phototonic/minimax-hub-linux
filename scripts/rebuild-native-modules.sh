@@ -439,6 +439,32 @@ verify_electron_requires() {
   log_action "OK Electron require: better-sqlite3"
   write_report_line "OK Electron require: better-sqlite3"
 }
+
+dual_abi_loader_ready() {
+  grep -F "hilo-agent-opencode patch: dual-ABI binding loader" \
+    "${gateway_dir}/node_modules/better-sqlite3/lib/database.js" >/dev/null 2>&1
+}
+
+abi_snapshot_ready() {
+  local abi="$1"
+  [[ -f "$(better_sqlite3_abi_node "${abi}")" ]]
+}
+
+electron_module_ready() {
+  [[ -n "${electron_abi}" ]] || return 1
+  [[ -x "${electron_bin}" ]] || return 1
+  abi_snapshot_ready "${electron_abi}" || return 1
+  NODE_PATH="${gateway_dir}/node_modules" ELECTRON_RUN_AS_NODE=1 "${electron_bin}" -e "require('better-sqlite3');" >/dev/null 2>&1
+}
+
+native_modules_fully_ready() {
+  [[ -n "${node_abi}" ]] || return 1
+  native_modules_ready || return 1
+  abi_snapshot_ready "${node_abi}" || return 1
+  electron_module_ready || return 1
+  dual_abi_loader_ready || return 1
+}
+
 native_modules_ready() {
   [[ -x "${node_bin}" ]] || return 1
   local module_name
@@ -590,16 +616,23 @@ detect_better_sqlite3_package
 report_abi_locations
 backup_dual_abi_loader
 remove_forbidden_artifacts
-if native_modules_ready; then
+if native_modules_fully_ready; then
+  log_action "Existing Linux native modules already load with packaged Node and Electron; skipping npm install and rebuild"
+  write_report_line "Existing Linux native modules already load with packaged Node and Electron; skipped npm install and rebuild"
+elif native_modules_ready; then
   log_action "Existing Linux native modules already load with packaged Node; skipping npm install"
   write_report_line "Existing Linux native modules already load with packaged Node; skipped npm install"
+  restore_dual_abi_loader
+  copy_release_to_abi_dir "${node_abi}" "Node"
+  rebuild_better_sqlite3_for_electron
+  restore_dual_abi_loader
 else
   install_linux_packages
+  restore_dual_abi_loader
+  copy_release_to_abi_dir "${node_abi}" "Node"
+  rebuild_better_sqlite3_for_electron
+  restore_dual_abi_loader
 fi
-restore_dual_abi_loader
-copy_release_to_abi_dir "${node_abi}" "Node"
-rebuild_better_sqlite3_for_electron
-restore_dual_abi_loader
 
 remaining_forbidden="$(find_forbidden_windows_artifacts "${gateway_dir}/node_modules")"
 if [[ -n "${remaining_forbidden}" ]]; then

@@ -6,10 +6,11 @@ source "$(dirname "${BASH_SOURCE[0]}")/common.sh"
 cache_dir="${WINDOWS_PAYLOAD_CACHE}"
 payload_dir=""
 strict=1
+write_reports="${MINIMAX_HUB_PAYLOAD_REPORTS:-1}"
 
 usage() {
   cat <<USAGE
-Usage: $(basename "$0") [--payload PATH] [--cache-dir PATH] [--no-fail]
+Usage: $(basename "$0") [--payload PATH] [--cache-dir PATH] [--no-fail] [--fast]
 
 Inspects a staged MiniMax Hub payload and writes deterministic reports.
 
@@ -17,6 +18,7 @@ Options:
   --payload PATH    Staged payload root. Defaults to CACHE_DIR/payload.
   --cache-dir PATH  Report/cache directory. Defaults to .cache/windows-payload.
   --no-fail         Write reports but return success even when required items are missing.
+  --fast            Keep required checks but skip expensive discovery/inventory/checksum reports.
   -h, --help        Show this help text.
 USAGE
 }
@@ -35,6 +37,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --no-fail)
       strict=0
+      shift
+      ;;
+    --fast)
+      write_reports=0
       shift
       ;;
     -h|--help)
@@ -135,19 +141,25 @@ inspection_report="${cache_dir}/inspection-report.txt"
     missing+=("icon resources")
   fi
 
-  echo
-  list_relative_matches "Icons" -type f \( -iname '*.png' -o -iname '*.ico' -o -iname '*.icns' -o -iname '*.svg' \)
-  echo
-  list_relative_matches "Native modules" -type f -name '*.node'
-  echo
-  list_relative_matches "better-sqlite3 native candidates" -type f -path '*better-sqlite3*' -name '*.node'
-  echo
-  list_relative_matches "sharp native candidates" -type f \( -path '*sharp*' -o -path '*@img*' \)
-  echo
-  list_relative_matches "@node-rs/xxhash native candidates" -type f -path '*@node-rs*xxhash*'
-  echo
-  detect_protocol_candidates
-  echo
+  if [[ "${write_reports}" == "1" ]]; then
+    echo
+    list_relative_matches "Icons" -type f \( -iname '*.png' -o -iname '*.ico' -o -iname '*.icns' -o -iname '*.svg' \)
+    echo
+    list_relative_matches "Native modules" -type f -name '*.node'
+    echo
+    list_relative_matches "better-sqlite3 native candidates" -type f -path '*better-sqlite3*' -name '*.node'
+    echo
+    list_relative_matches "sharp native candidates" -type f \( -path '*sharp*' -o -path '*@img*' \)
+    echo
+    list_relative_matches "@node-rs/xxhash native candidates" -type f -path '*@node-rs*xxhash*'
+    echo
+    detect_protocol_candidates
+    echo
+  else
+    echo
+    echo "Discovery reports: skipped (--fast)"
+    echo
+  fi
 
   forbidden="$(find_forbidden_windows_artifacts "${payload_dir}")"
   if [[ -n "${forbidden}" ]]; then
@@ -174,7 +186,7 @@ inspection_report="${cache_dir}/inspection-report.txt"
 
 cat "${inspection_report}"
 
-if [[ -d "${payload_dir}" ]]; then
+if [[ -d "${payload_dir}" && "${write_reports}" == "1" ]]; then
   write_sorted_inventory "${payload_dir}" "${cache_dir}/inventory.txt"
   write_sha256_report "${payload_dir}" "${cache_dir}/sha256.txt"
 fi
@@ -188,3 +200,6 @@ if [[ ${#missing[@]} -gt 0 && "${strict}" -eq 1 ]]; then
 fi
 
 info "Wrote ${inspection_report}"
+if [[ "${write_reports}" != "1" ]]; then
+  info "Skipped inspection inventory/checksum reports because --fast was used"
+fi

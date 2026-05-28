@@ -54,6 +54,12 @@ else
 fi
 ELECTRON_VERSION="${MINIMAX_HUB_ELECTRON_VERSION:-38.8.6}"
 NODE_VERSION="${MINIMAX_HUB_NODE_VERSION:-22.22.0}"
+DEFAULT_DEB_BUILDER_IMAGE="minimax-hub-linux-deb-builder:24.04"
+DEFAULT_RPM_BUILDER_IMAGE="minimax-hub-linux-rpm-builder:9"
+DEB_BUILDER_IMAGE="${MINIMAX_HUB_DEB_BUILDER_IMAGE:-${DEFAULT_DEB_BUILDER_IMAGE}}"
+RPM_BUILDER_IMAGE="${MINIMAX_HUB_RPM_BUILDER_IMAGE:-${DEFAULT_RPM_BUILDER_IMAGE}}"
+DEB_RUNTIME_DEPS="curl unzip tar xz-utils python3 ca-certificates npm build-essential pkg-config git libnspr4 libnss3 libgtk-3-0 libx11-6 libx11-xcb1 libxcb1 libxcomposite1 libxdamage1 libxrandr2 libasound2t64 libdrm2 libgbm1"
+RPM_BUILD_DEPS="rpm-build rpm cpio rsync findutils tar"
 
 find_gh() {
   if command -v gh >/dev/null 2>&1; then command -v gh; return 0; fi
@@ -261,62 +267,156 @@ assert_source_mount_works() {
   MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL="*" "${DOCKER_CMD}" run --rm --mount "type=bind,source=${HOST_SOURCE_PATH},target=/source,readonly" alpine:3.20 test -f /source/resources/app.asar >/dev/null
 }
 
+docker_image_exists() {
+  "${DOCKER_CMD}" image inspect "$1" >/dev/null 2>&1
+}
+
+resolve_deb_container() {
+  if docker_image_exists "${DEB_BUILDER_IMAGE}"; then
+    DEB_CONTAINER_IMAGE="${DEB_BUILDER_IMAGE}"
+    DEB_INSTALL_DEPS=0
+    return 0
+  fi
+  if [[ -n "${MINIMAX_HUB_DEB_BUILDER_IMAGE:-}" ]]; then
+    die "Configured Debian builder image does not exist locally: ${DEB_BUILDER_IMAGE}. Build it first or unset MINIMAX_HUB_DEB_BUILDER_IMAGE."
+  fi
+  DEB_CONTAINER_IMAGE="ubuntu:24.04"
+  DEB_INSTALL_DEPS=1
+}
+
+resolve_rpm_container() {
+  if docker_image_exists "${RPM_BUILDER_IMAGE}"; then
+    RPM_CONTAINER_IMAGE="${RPM_BUILDER_IMAGE}"
+    RPM_INSTALL_DEPS=0
+    return 0
+  fi
+  if [[ -n "${MINIMAX_HUB_RPM_BUILDER_IMAGE:-}" ]]; then
+    die "Configured RPM builder image does not exist locally: ${RPM_BUILDER_IMAGE}. Build it first or unset MINIMAX_HUB_RPM_BUILDER_IMAGE."
+  fi
+  RPM_CONTAINER_IMAGE="rockylinux:9"
+  RPM_INSTALL_DEPS=1
+}
+
+timed_step() {
+  local label="$1"
+  shift
+  local start end elapsed
+  start="$(date +%s)"
+  info "START ${label}"
+  "$@"
+  end="$(date +%s)"
+  elapsed=$((end - start))
+  info "DONE ${label} (${elapsed}s)"
+}
+
 run_pipeline_container() {
   MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL="*" "${DOCKER_CMD}" run --rm \
     -e DEBIAN_FRONTEND=noninteractive \
     -e ELECTRON_VERSION="${ELECTRON_VERSION}" \
+    -e DEB_RUNTIME_DEPS="${DEB_RUNTIME_DEPS}" \
+    -e INSTALL_DEB_DEPS="${DEB_INSTALL_DEPS}" \
     -e NODE_VERSION="${NODE_VERSION}" \
     -e SOURCE_PATH="/source" \
     -e RESUME="${RESUME}" \
     --mount "type=bind,source=${HOST_WORKDIR},target=/work" \
     --mount "type=bind,source=${HOST_SOURCE_PATH},target=/source,readonly" \
     -w /work \
-    ubuntu:24.04 \
+    "${DEB_CONTAINER_IMAGE}" \
     bash -lc '
       set -euo pipefail
-      apt-get update >/dev/null
-      apt-get install -y curl unzip tar xz-utils python3 ca-certificates npm build-essential pkg-config git libnspr4 libnss3 libgtk-3-0 libx11-6 libx11-xcb1 libxcb1 libxcomposite1 libxdamage1 libxrandr2 libasound2t64 libdrm2 libgbm1 >/dev/null
+      stage_start=0
+      begin_stage() { stage_start="$(date +%s)"; echo "[TIMING] START $*"; }
+      end_stage() { local end; end="$(date +%s)"; echo "[TIMING] DONE $* ($((end - stage_start))s)"; }
+      if [[ "${INSTALL_DEB_DEPS}" == "1" ]]; then
+        begin_stage "install Debian container dependencies"
+        apt-get update >/dev/null
+        apt-get install -y ${DEB_RUNTIME_DEPS} >/dev/null
+        end_stage "install Debian container dependencies"
+      else
+        echo "[TIMING] SKIP install Debian container dependencies (builder image)"
+      fi
+      begin_stage "extract Windows payload"
       if [[ "${RESUME}" != "1" || ! -d .cache/windows-payload/payload ]]; then
-        bash scripts/extract-windows-payload.sh --source "${SOURCE_PATH}"
+        bash scripts/extract-windows-payload.sh --source "${SOURCE_PATH}" --no-reports
       else
         echo "Resume: using existing .cache/windows-payload/payload"
       fi
-      bash scripts/inspect-payload.sh
+      end_stage "extract Windows payload"
+      begin_stage "inspect payload"
+      bash scripts/inspect-payload.sh --fast
+      end_stage "inspect payload"
+      begin_stage "stage Electron runtime"
       if [[ "${RESUME}" != "1" || ! -x linux-build/opt/minimax-hub/electron ]]; then
         bash scripts/fetch-electron-linux.sh --version "${ELECTRON_VERSION}"
       else
         echo "Resume: using existing Electron runtime"
       fi
+      end_stage "stage Electron runtime"
+      begin_stage "stage Node runtime"
       if [[ "${RESUME}" != "1" || ! -x linux-build/opt/minimax-hub/node/bin/node ]]; then
         bash scripts/fetch-node-linux.sh --version "${NODE_VERSION}"
       else
         echo "Resume: using existing Node runtime"
       fi
+      end_stage "stage Node runtime"
+      begin_stage "stage OpenCode runtime"
       if [[ "${RESUME}" != "1" || ! -x linux-build/opt/minimax-hub/resources/opencode/opencode ]]; then
         bash scripts/fetch-opencode-linux.sh
       else
         echo "Resume: using existing OpenCode binary"
       fi
+      end_stage "stage OpenCode runtime"
+      begin_stage "stage FFmpeg runtime"
       if [[ "${RESUME}" != "1" || ! -x linux-build/opt/minimax-hub/resources/ffmpeg/ffmpeg || ! -x linux-build/opt/minimax-hub/resources/ffmpeg/ffprobe ]]; then
         bash scripts/fetch-ffmpeg-linux.sh
       else
         echo "Resume: using existing FFmpeg binaries"
       fi
-      bash scripts/assemble-linux-payload.sh --no-normalize
+      end_stage "stage FFmpeg runtime"
+      begin_stage "stage gateway for native rebuild"
+      bash scripts/stage-native-rebuild-payload.sh
+      end_stage "stage gateway for native rebuild"
+      begin_stage "rebuild native modules"
       bash scripts/rebuild-native-modules.sh
+      end_stage "rebuild native modules"
+      begin_stage "assemble final payload"
       MINIMAX_HUB_SKIP_PAYLOAD_REPORTS=1 bash scripts/assemble-linux-payload.sh
+      end_stage "assemble final payload"
+      begin_stage "verify assembled gateway modules"
       bash tests/verify-assemble-gateway-modules.sh
+      end_stage "verify assembled gateway modules"
+      begin_stage "verify payload"
       bash tests/verify-payload.sh linux-build/opt/minimax-hub
+      end_stage "verify payload"
+      begin_stage "build Debian package"
       MINIMAX_HUB_SKIP_PAYLOAD_NORMALIZE=1 bash build.sh
+      end_stage "build Debian package"
     '
 }
 
 run_rpm_container() {
   MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL="*" "${DOCKER_CMD}" run --rm \
+    -e INSTALL_RPM_DEPS="${RPM_INSTALL_DEPS}" \
+    -e RPM_BUILD_DEPS="${RPM_BUILD_DEPS}" \
     --mount "type=bind,source=${HOST_WORKDIR},target=/work" \
     -w /work \
-    rockylinux:9 \
-    bash -lc 'dnf install -y rpm-build rpm cpio rsync findutils tar >/dev/null && bash build-rpm.sh'
+    "${RPM_CONTAINER_IMAGE}" \
+    bash -lc '
+      set -euo pipefail
+      stage_start=0
+      begin_stage() { stage_start="$(date +%s)"; echo "[TIMING] START $*"; }
+      end_stage() { local end; end="$(date +%s)"; echo "[TIMING] DONE $* ($((end - stage_start))s)"; }
+      if [[ "${INSTALL_RPM_DEPS}" == "1" ]]; then
+        begin_stage "install RPM container dependencies"
+        dnf install -y ${RPM_BUILD_DEPS} >/dev/null
+        end_stage "install RPM container dependencies"
+      else
+        echo "[TIMING] SKIP install RPM container dependencies (builder image)"
+      fi
+      begin_stage "build RPM package"
+      bash build-rpm.sh
+      end_stage "build RPM package"
+    '
 }
 
 info "MiniMax Hub Linux Release Helper"
@@ -356,6 +456,11 @@ success "Docker can access the repository"
 info "Checking Docker MiniMax source mount access..."
 assert_source_mount_works || die "Docker cannot mount the MiniMax Hub install at ${HOST_SOURCE_PATH}. Check the source path and Docker Desktop file sharing settings."
 success "Docker can access the MiniMax Hub install"
+
+resolve_deb_container
+resolve_rpm_container
+info "Debian build container: ${DEB_CONTAINER_IMAGE}$([[ "${DEB_INSTALL_DEPS}" == "1" ]] && echo ' (installs deps each run)' || echo ' (prebuilt deps)')"
+info "RPM build container: ${RPM_CONTAINER_IMAGE}$([[ "${RPM_INSTALL_DEPS}" == "1" ]] && echo ' (installs deps each run)' || echo ' (prebuilt deps)')"
 
 if [[ "${CHECK_ONLY}" -eq 1 ]]; then
   success "Prerequisite check passed"
